@@ -580,7 +580,7 @@
                         type="url" 
                         id="websiteUrl" 
                         class="url-input" 
-                        placeholder="Enter website URL (e.g., https://example.com)"
+                        placeholder="Enter website URL (e.g., example.com or https://example.com)"
                         required
                     >
                     <button type="submit" class="analyze-button" id="analyzeButton">
@@ -664,6 +664,76 @@
             };
         }
 
+        // Comprehensive URL validation and sanitization
+        function validateAndSanitizeUrl(inputUrl) {
+            if (!inputUrl || typeof inputUrl !== 'string') {
+                throw new Error('Please enter a valid website URL');
+            }
+
+            // Trim whitespace
+            let url = inputUrl.trim();
+            
+            if (!url) {
+                throw new Error('Please enter a valid website URL');
+            }
+
+            // Remove common prefixes that might cause issues
+            url = url.replace(/^(www\.|http:\/\/www\.|https:\/\/www\.)/, '');
+            
+            // Handle different URL formats and edge cases
+            if (!url.includes('.')) {
+                throw new Error('Please enter a valid website URL with a domain (e.g., example.com)');
+            }
+
+            // Handle common typos and variations
+            url = url.replace(/^https?:\/\//, ''); // Remove protocol if present
+            url = url.replace(/\/$/, ''); // Remove trailing slash
+            url = url.replace(/^www\./, ''); // Remove www prefix
+            
+            // Check for invalid characters
+            if (url.includes(' ')) {
+                throw new Error('URL cannot contain spaces. Please check your input.');
+            }
+            
+            // Check for common invalid patterns
+            if (url.startsWith('.') || url.endsWith('.')) {
+                throw new Error('Please enter a valid domain name without leading or trailing dots');
+            }
+
+            // Add protocol if missing
+            if (!url.startsWith('http://') && !url.startsWith('https://')) {
+                url = 'http://' + url;
+            }
+
+            // Basic URL validation
+            try {
+                const urlObj = new URL(url);
+                
+                // Check if it's a valid web protocol
+                if (!['http:', 'https:'].includes(urlObj.protocol)) {
+                    throw new Error('Only HTTP and HTTPS protocols are supported');
+                }
+                
+                // Check if hostname is valid
+                if (!urlObj.hostname || urlObj.hostname.length < 3) {
+                    throw new Error('Please enter a valid domain name');
+                }
+                
+                // Check for common invalid patterns
+                if (urlObj.hostname.includes('..') || urlObj.hostname.startsWith('.') || urlObj.hostname.endsWith('.')) {
+                    throw new Error('Please enter a valid domain name');
+                }
+                
+                return url;
+                
+            } catch (error) {
+                if (error.message.includes('Invalid URL')) {
+                    throw new Error('Please enter a valid website URL format');
+                }
+                throw error;
+            }
+        }
+
         // DOM elements
         const form = document.getElementById('analysisForm');
         const urlInput = document.getElementById('websiteUrl');
@@ -682,27 +752,42 @@
         // Form submission handler
         form.addEventListener('submit', async (e) => {
             e.preventDefault();
-            const url = urlInput.value.trim();
             
-            if (!url) {
-                alert('Please enter a valid website URL');
+            try {
+                const url = validateAndSanitizeUrl(urlInput.value);
+                urlInput.value = url; // Update the input field to show the sanitized URL
+                await analyzeWebsite(url);
+            } catch (error) {
+                alert(error.message);
+                urlInput.focus();
                 return;
             }
-
-            await analyzeWebsite(url);
         });
 
         // Direct analyze button click handler (backup)
         analyzeButton.addEventListener('click', async (e) => {
             e.preventDefault();
-            const url = urlInput.value.trim();
             
-            if (!url) {
-                alert('Please enter a valid website URL');
+            try {
+                const url = validateAndSanitizeUrl(urlInput.value);
+                urlInput.value = url; // Update the input field to show the sanitized URL
+                await analyzeWebsite(url);
+            } catch (error) {
+                alert(error.message);
+                urlInput.focus();
                 return;
             }
+        });
 
-            await analyzeWebsite(url);
+        // Real-time URL validation
+        urlInput.addEventListener('input', function() {
+            const url = this.value.trim();
+            if (url && !url.startsWith('http://') && !url.startsWith('https://') && url.includes('.')) {
+                // Show a subtle hint that http:// will be added
+                this.style.borderColor = 'var(--primary-accent)';
+            } else {
+                this.style.borderColor = 'rgba(255, 255, 255, 0.2)';
+            }
         });
 
         // Chat functionality
