@@ -56,9 +56,19 @@ class LLMClient:
 
 Homepage Content: {content_text}{questions_text}
 
-Output JSON with these exact keys: industry, company_size, location, USP, products, target_audience, contact_info.
-Ensure concise, accurate, and relevant answers. If information is not available, use null.
-Return only valid JSON, no additional text."""
+Output JSON with these exact keys and types:
+- industry: string (required, never null)
+- company_size: string or null
+- location: string or null  
+- USP: string or null
+- products: array of strings (product names only, not objects)
+- target_audience: string or null
+- contact_info: object or empty object
+
+IMPORTANT: 
+- products must be an array of simple strings, not objects
+- industry must always be a string, never null
+- Return only valid JSON, no additional text or markdown formatting."""
 
         try:
             response = await self.client.chat.completions.create(
@@ -85,13 +95,20 @@ Return only valid JSON, no additional text."""
             # Parse JSON response
             insights = json.loads(content)
             
-            # Validate and clean insights to ensure no None values for required fields
+            # Validate and clean insights to ensure proper types
+            products = insights.get("products") or []
+            # Convert product objects to strings if needed
+            if products and isinstance(products[0], dict):
+                products = [prod.get("name", str(prod)) for prod in products if isinstance(prod, dict)]
+            elif products and not all(isinstance(p, str) for p in products):
+                products = [str(p) for p in products]
+            
             cleaned_insights = {
                 "industry": insights.get("industry") or "Business Services",
                 "company_size": insights.get("company_size"),
                 "location": insights.get("location"),
                 "USP": insights.get("USP"),
-                "products": insights.get("products") or [],
+                "products": products,
                 "target_audience": insights.get("target_audience"),
                 "contact_info": insights.get("contact_info") or {}
             }
