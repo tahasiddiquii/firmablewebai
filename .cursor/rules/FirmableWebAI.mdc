@@ -1,0 +1,492 @@
+---
+alwaysApply: true
+---
+
+# FirmableWebAI Project Requirements
+
+## 1. Project Overview
+
+Design and develop a Vercel-deployable, AI-powered backend that:
+
+- Scrapes homepage content from any website.
+- Extracts and infers structured business insights.
+- Supports RAG-based conversational follow-up questions.
+- Provides self-explanatory, Pydantic-validated endpoints.
+- Includes a lightweight frontend skeleton for demonstration.
+- Uses hybrid TDD workflow with Cursor AI integration for testing and development.
+
+### Key Design Principles:
+
+- Minimalism & modularity.
+- Strictly homepage content for AI extraction (no extra fallback features).
+- Fully asynchronous, robust, and production-ready.
+- Deployable on Vercel serverless environment.
+
+## 2. Tech Stack
+
+| Layer | Technology | Notes |
+|-------|------------|-------|
+| Backend | FastAPI | Async Python web framework |
+| Validation | Pydantic | Request/response validation & serialization |
+| Scraper | Scrapy | Homepage-only scraping |
+| LLMs | GPT-4.1 (structured insights), GPT-4o-mini (RAG chat) | OpenAI APIs |
+| Embeddings | text-embedding-3-large | Semantic search / RAG |
+| Vector Store | pgvector (Postgres extension) | Stores embeddings |
+| Deployment | Vercel | Serverless functions |
+| Auth | Bearer Token | Header-based authentication |
+| Rate Limit | fastapi-limiter (+ Redis optional) | Protect endpoints |
+| Testing | Pytest + Cursor AI | Hybrid TDD workflow |
+
+## 3. System Architecture
+
+**User → Frontend Skeleton → API Endpoints → Scrapy Spider → LLMs & Embeddings → pgvector → RAG → Response → Frontend**
+
+### Components:
+
+**Frontend Skeleton**
+- Input: Website URL, optional questions.
+- Display: Insights JSON, conversational Q&A results.
+
+**Backend (FastAPI)**
+- `/website/insights`: Scrapes website, generates structured insights via GPT-4.1.
+- `/website/query`: RAG-based follow-up Q&A using GPT-4o-mini + vector search.
+- Pydantic models validate inputs and outputs.
+
+**Scraper (Scrapy)**
+- Extract homepage `<title>`, `<meta>`, headings, main content, hero section, products, contact info.
+- Async runner callable from FastAPI endpoints.
+
+**Vector Store (pgvector)**
+- Stores embeddings of website chunks (text-embedding-3-large).
+- Used for similarity search in RAG flow.
+
+**LLM Integration**
+- GPT-4.1: structured insights (industry, USP, products, etc.)
+- GPT-4o-mini: conversational RAG answers using retrieved chunks + conversation history
+
+## 4. API Endpoints
+
+### 4.1 /website/insights
+
+**Method:** POST
+
+**Input:**
+```python
+from pydantic import BaseModel, HttpUrl
+from typing import List, Optional
+
+class InsightsRequest(BaseModel):
+    url: HttpUrl
+    questions: Optional[List[str]] = None
+```
+
+**Output:**
+```python
+class InsightsResponse(BaseModel):
+    industry: str
+    company_size: Optional[str]
+    location: Optional[str]
+    USP: Optional[str]
+    products: Optional[List[str]]
+    target_audience: Optional[str]
+    contact_info: Optional[dict]
+```
+
+**Functionality:**
+- Scrape homepage.
+- Extract and summarize core business details via GPT-4.1.
+- Optional: Answer user-provided questions.
+- Security: Bearer token authentication.
+- Rate Limiting: Implement via fastapi-limiter.
+
+### 4.2 /website/query
+
+**Method:** POST
+
+**Input:**
+```python
+from typing import List, Optional, Dict
+
+class QueryRequest(BaseModel):
+    url: HttpUrl
+    query: str
+    conversation_history: Optional[List[Dict[str, str]]] = []
+```
+
+**Output:**
+```python
+class QueryResponse(BaseModel):
+    answer: str
+    source_chunks: List[str]
+    conversation_history: List[Dict[str, str]]
+```
+
+**Functionality:**
+- Embed user query → pgvector similarity search → retrieve top-K chunks.
+- Feed chunks + conversation history into GPT-4o-mini.
+- Return grounded conversational answer.
+
+## 5. Database Schema
+
+```sql
+CREATE TABLE websites (
+    id SERIAL PRIMARY KEY,
+    url TEXT UNIQUE NOT NULL,
+    insights JSONB,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE website_chunks (
+    id SERIAL PRIMARY KEY,
+    website_id INT REFERENCES websites(id) ON DELETE CASCADE,
+    chunk_text TEXT,
+    embedding VECTOR(3072)
+);
+```
+
+## 6. Scrapy Plan
+
+- **Spider:** Homepage-only.
+- **Extract:** Title, meta description, headings, main content, products, contact info.
+- **Async runner:** Called from FastAPI endpoints.
+
+## 7. Hybrid TDD Workflow (Cursor AI Integrated)
+
+**Pre-implementation lightweight tests:**
+- Scraper returns correct structure.
+- DB inserts embeddings correctly.
+- Endpoint responds with expected fields & 200/401 status.
+
+**Post-MVP comprehensive tests:**
+- RAG correctness, top-K chunk retrieval.
+- Conversation history respected.
+- Error handling & rate limiting.
+
+**Cursor AI Usage:**
+- Scaffold tests, catch edge cases, refactor.
+- Accelerate iterative development & regression checks.
+
+## 8. Frontend Skeleton
+
+Minimal page to:
+- Input URL + optional questions.
+- Display `/website/insights` results.
+- Display `/website/query` responses in chat-like interface.
+- HTML + JS + lightweight fetch calls to FastAPI endpoints.
+- Optional: React or Vanilla JS; primarily for demonstration.
+
+## 9. LLM Prompt Templates (Examples)
+
+### Insights Generation Prompt (GPT-4.1)
+```
+You are an AI business analyst. Based on the following homepage text, extract structured insights:
+
+Homepage Content: {scraped_content}
+Optional Questions: {questions}
+
+Output JSON keys: industry, company_size, location, USP, products, target_audience, contact_info.
+Ensure concise, accurate, and relevant answers.
+```
+
+### RAG Conversational Prompt (GPT-4o-mini)
+```
+You are an AI assistant answering questions based on retrieved website chunks.
+
+Context Chunks: {retrieved_chunks}
+Conversation History: {conversation_history}
+User Query: {query}
+
+Provide a clear, grounded answer using only the information from the chunks.
+If information is not available, respond with "Not available on the website."
+```
+
+## 10. Deployment & Environment
+
+**Platform:** Vercel (serverless functions)
+
+**Environment Variables:**
+- `OPENAI_API_KEY`
+- `POSTGRES_URL` (pgvector-enabled)
+- `API_SECRET_KEY`
+
+**Considerations:**
+- Serverless cold starts, function timeout (<60s)
+- Async Scrapy & embeddings for efficiency
+
+## 11. Project Structure
+
+```
+/api
+    website_insights.py
+    website_query.py
+/app
+    scraper/
+        homepage_spider.py
+        runner.py
+    llm/
+        llm_client.py
+    db/
+        postgres_client.py
+/models
+    pydantic_models.py
+/frontend
+    index.html
+    script.js
+requirements.txt
+vercel.json
+```
+
+## 12. Best Practices
+
+- Async programming throughout.
+- Pydantic for validation/serialization.
+- Structured prompts & RAG retrieval.
+- Hybrid TDD with Cursor AI.
+- Robust error handling & rate-limiting.
+- Lightweight frontend skeleton for demonstration.
+
+✅ This PRD fully integrates all decisions, assessment requirements, and best practices. It's ready for implementation or AI-assisted code generation.
+# FirmableWebAI Project Requirements
+
+## 1. Project Overview
+
+Design and develop a Vercel-deployable, AI-powered backend that:
+
+- Scrapes homepage content from any website.
+- Extracts and infers structured business insights.
+- Supports RAG-based conversational follow-up questions.
+- Provides self-explanatory, Pydantic-validated endpoints.
+- Includes a lightweight frontend skeleton for demonstration.
+- Uses hybrid TDD workflow with Cursor AI integration for testing and development.
+
+### Key Design Principles:
+
+- Minimalism & modularity.
+- Strictly homepage content for AI extraction (no extra fallback features).
+- Fully asynchronous, robust, and production-ready.
+- Deployable on Vercel serverless environment.
+
+## 2. Tech Stack
+
+| Layer | Technology | Notes |
+|-------|------------|-------|
+| Backend | FastAPI | Async Python web framework |
+| Validation | Pydantic | Request/response validation & serialization |
+| Scraper | Scrapy | Homepage-only scraping |
+| LLMs | GPT-4.1 (structured insights), GPT-4o-mini (RAG chat) | OpenAI APIs |
+| Embeddings | text-embedding-3-large | Semantic search / RAG |
+| Vector Store | pgvector (Postgres extension) | Stores embeddings |
+| Deployment | Vercel | Serverless functions |
+| Auth | Bearer Token | Header-based authentication |
+| Rate Limit | fastapi-limiter (+ Redis optional) | Protect endpoints |
+| Testing | Pytest + Cursor AI | Hybrid TDD workflow |
+
+## 3. System Architecture
+
+**User → Frontend Skeleton → API Endpoints → Scrapy Spider → LLMs & Embeddings → pgvector → RAG → Response → Frontend**
+
+### Components:
+
+**Frontend Skeleton**
+- Input: Website URL, optional questions.
+- Display: Insights JSON, conversational Q&A results.
+
+**Backend (FastAPI)**
+- `/website/insights`: Scrapes website, generates structured insights via GPT-4.1.
+- `/website/query`: RAG-based follow-up Q&A using GPT-4o-mini + vector search.
+- Pydantic models validate inputs and outputs.
+
+**Scraper (Scrapy)**
+- Extract homepage `<title>`, `<meta>`, headings, main content, hero section, products, contact info.
+- Async runner callable from FastAPI endpoints.
+
+**Vector Store (pgvector)**
+- Stores embeddings of website chunks (text-embedding-3-large).
+- Used for similarity search in RAG flow.
+
+**LLM Integration**
+- GPT-4.1: structured insights (industry, USP, products, etc.)
+- GPT-4o-mini: conversational RAG answers using retrieved chunks + conversation history
+
+## 4. API Endpoints
+
+### 4.1 /website/insights
+
+**Method:** POST
+
+**Input:**
+```python
+from pydantic import BaseModel, HttpUrl
+from typing import List, Optional
+
+class InsightsRequest(BaseModel):
+    url: HttpUrl
+    questions: Optional[List[str]] = None
+```
+
+**Output:**
+```python
+class InsightsResponse(BaseModel):
+    industry: str
+    company_size: Optional[str]
+    location: Optional[str]
+    USP: Optional[str]
+    products: Optional[List[str]]
+    target_audience: Optional[str]
+    contact_info: Optional[dict]
+```
+
+**Functionality:**
+- Scrape homepage.
+- Extract and summarize core business details via GPT-4.1.
+- Optional: Answer user-provided questions.
+- Security: Bearer token authentication.
+- Rate Limiting: Implement via fastapi-limiter.
+
+### 4.2 /website/query
+
+**Method:** POST
+
+**Input:**
+```python
+from typing import List, Optional, Dict
+
+class QueryRequest(BaseModel):
+    url: HttpUrl
+    query: str
+    conversation_history: Optional[List[Dict[str, str]]] = []
+```
+
+**Output:**
+```python
+class QueryResponse(BaseModel):
+    answer: str
+    source_chunks: List[str]
+    conversation_history: List[Dict[str, str]]
+```
+
+**Functionality:**
+- Embed user query → pgvector similarity search → retrieve top-K chunks.
+- Feed chunks + conversation history into GPT-4o-mini.
+- Return grounded conversational answer.
+
+## 5. Database Schema
+
+```sql
+CREATE TABLE websites (
+    id SERIAL PRIMARY KEY,
+    url TEXT UNIQUE NOT NULL,
+    insights JSONB,
+    created_at TIMESTAMP DEFAULT NOW()
+);
+
+CREATE TABLE website_chunks (
+    id SERIAL PRIMARY KEY,
+    website_id INT REFERENCES websites(id) ON DELETE CASCADE,
+    chunk_text TEXT,
+    embedding VECTOR(3072)
+);
+```
+
+## 6. Scrapy Plan
+
+- **Spider:** Homepage-only.
+- **Extract:** Title, meta description, headings, main content, products, contact info.
+- **Async runner:** Called from FastAPI endpoints.
+
+## 7. Hybrid TDD Workflow (Cursor AI Integrated)
+
+**Pre-implementation lightweight tests:**
+- Scraper returns correct structure.
+- DB inserts embeddings correctly.
+- Endpoint responds with expected fields & 200/401 status.
+
+**Post-MVP comprehensive tests:**
+- RAG correctness, top-K chunk retrieval.
+- Conversation history respected.
+- Error handling & rate limiting.
+
+**Cursor AI Usage:**
+- Scaffold tests, catch edge cases, refactor.
+- Accelerate iterative development & regression checks.
+
+## 8. Frontend Skeleton
+
+Minimal page to:
+- Input URL + optional questions.
+- Display `/website/insights` results.
+- Display `/website/query` responses in chat-like interface.
+- HTML + JS + lightweight fetch calls to FastAPI endpoints.
+- Optional: React or Vanilla JS; primarily for demonstration.
+
+## 9. LLM Prompt Templates (Examples)
+
+### Insights Generation Prompt (GPT-4.1)
+```
+You are an AI business analyst. Based on the following homepage text, extract structured insights:
+
+Homepage Content: {scraped_content}
+Optional Questions: {questions}
+
+Output JSON keys: industry, company_size, location, USP, products, target_audience, contact_info.
+Ensure concise, accurate, and relevant answers.
+```
+
+### RAG Conversational Prompt (GPT-4o-mini)
+```
+You are an AI assistant answering questions based on retrieved website chunks.
+
+Context Chunks: {retrieved_chunks}
+Conversation History: {conversation_history}
+User Query: {query}
+
+Provide a clear, grounded answer using only the information from the chunks.
+If information is not available, respond with "Not available on the website."
+```
+
+## 10. Deployment & Environment
+
+**Platform:** Vercel (serverless functions)
+
+**Environment Variables:**
+- `OPENAI_API_KEY`
+- `POSTGRES_URL` (pgvector-enabled)
+- `API_SECRET_KEY`
+
+**Considerations:**
+- Serverless cold starts, function timeout (<60s)
+- Async Scrapy & embeddings for efficiency
+
+## 11. Project Structure
+
+```
+/api
+    website_insights.py
+    website_query.py
+/app
+    scraper/
+        homepage_spider.py
+        runner.py
+    llm/
+        llm_client.py
+    db/
+        postgres_client.py
+/models
+    pydantic_models.py
+/frontend
+    index.html
+    script.js
+requirements.txt
+vercel.json
+```
+
+## 12. Best Practices
+
+- Async programming throughout.
+- Pydantic for validation/serialization.
+- Structured prompts & RAG retrieval.
+- Hybrid TDD with Cursor AI.
+- Robust error handling & rate-limiting.
+- Lightweight frontend skeleton for demonstration.
+
+✅ This PRD fully integrates all decisions, assessment requirements, and best practices. It's ready for implementation or AI-assisted code generation.

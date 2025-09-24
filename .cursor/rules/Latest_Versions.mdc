@@ -1,0 +1,263 @@
+---
+alwaysApply: true
+---
+
+# Latest Versions & Best Practices Rule
+
+## Purpose
+Always check for and use the latest versions of libraries, SDKs, and frameworks to ensure optimal performance, security, and access to the newest features and best practices.
+
+## Core Principle
+**Always use the latest stable versions** of all dependencies and follow the most current best practices, syntax, and tooling available.
+
+## Implementation Rules
+
+### 1. Version Checking Protocol
+- **Before using any library/SDK**: Check the latest stable version on official sources
+- **Primary sources**: PyPI, npm, GitHub releases, official documentation
+- **Verification**: Cross-reference with official documentation and changelog
+- **Stability**: Prefer latest stable over beta/RC unless specifically required
+
+### 2. Dependency Management
+- **requirements.txt**: Always specify latest stable versions
+- **package.json**: Use latest stable versions for Node.js dependencies
+- **pip install**: Use `pip install --upgrade` for latest versions
+- **npm/yarn**: Use `npm update` or `yarn upgrade` for latest versions
+
+### 3. API & Syntax Updates
+- **New syntax**: Use the most current syntax and patterns
+- **Deprecated features**: Avoid deprecated methods, use modern alternatives
+- **API changes**: Follow latest API documentation and patterns
+- **Best practices**: Implement according to latest official guidelines
+
+### 4. Framework-Specific Updates
+
+#### FastAPI
+- Use latest FastAPI version with newest async patterns
+- Implement latest Pydantic v2 features and validation
+- Use current dependency injection patterns
+- Apply latest security best practices
+
+#### Scrapy
+- Use latest Scrapy version with newest async features
+- Implement current spider patterns and middleware
+- Apply latest performance optimizations
+
+#### OpenAI API
+- Use latest OpenAI Python SDK
+- Implement current API patterns and authentication
+- Apply latest rate limiting and error handling
+
+#### Database (PostgreSQL/pgvector)
+- Use latest psycopg2 or asyncpg drivers
+- Implement current connection pooling
+- Apply latest pgvector features and syntax
+
+### 5. Development Tools
+- **Testing**: Use latest pytest features and plugins
+- **Linting**: Apply latest flake8, black, isort configurations
+- **Type checking**: Use latest mypy features and type hints
+- **Code formatting**: Follow latest black and isort standards
+
+### 6. Deployment & Infrastructure
+- **Vercel**: Use latest serverless function patterns
+- **Environment**: Apply latest environment variable practices
+- **Security**: Implement latest security headers and practices
+- **Monitoring**: Use current logging and monitoring patterns
+
+## Version Check Commands
+
+### Python Dependencies
+```bash
+# Check latest versions
+pip list --outdated
+pip install --upgrade package_name
+
+# Check specific package
+pip show package_name
+```
+
+### Node.js Dependencies
+```bash
+# Check outdated packages
+npm outdated
+npm update
+
+# Check specific package
+npm view package_name version
+```
+
+### System-wide Check
+```bash
+# Check all dependencies
+pip list --outdated
+npm outdated
+```
+
+## Documentation Sources
+- **Official docs**: Always reference latest official documentation
+- **Changelog**: Review breaking changes and new features
+- **GitHub releases**: Check for latest stable releases
+- **Community**: Follow latest community best practices
+
+## Implementation Checklist
+- [ ] Check latest version before adding any dependency
+- [ ] Update existing dependencies to latest stable
+- [ ] Review breaking changes and migration guides
+- [ ] Update code to use latest syntax and patterns
+- [ ] Test with latest versions
+- [ ] Update documentation to reflect latest practices
+- [ ] Apply latest security and performance optimizations
+
+## Always Apply
+This rule should be applied automatically whenever:
+- Adding new dependencies
+- Updating existing code
+- Implementing new features
+- Refactoring existing code
+- Deploying to production
+
+## Benefits
+- **Security**: Latest versions include security patches
+- **Performance**: Newer versions often have performance improvements
+- **Features**: Access to latest features and capabilities
+- **Support**: Better community support and documentation
+- **Compatibility**: Better compatibility with other modern tools
+- **Future-proofing**: Code remains maintainable and up-to-date
+
+## Exception Handling
+- **Breaking changes**: If latest version has breaking changes, plan migration
+- **Compatibility**: Ensure all dependencies work together
+- **Testing**: Thoroughly test after version updates
+- **Rollback plan**: Have rollback strategy for critical updates
+
+✅ This rule ensures the project always uses cutting-edge technology with the latest best practices, security updates, and performance optimizations.# Latest Versions & Best Practices Rule
+
+## Purpose
+Always check for and use the latest versions of libraries, SDKs, and frameworks to ensure optimal performance, security, and access to the newest features and best practices.
+
+## Core Principle
+**Always use the latest stable versions** of all dependencies and follow the most current best practices, syntax, and tooling available.
+
+## Implementation Rules
+
+### 1. Version Checking Protocol
+- **Before using any library/SDK**: Check the latest stable version on official sources
+- **Primary sources**: PyPI, npm, GitHub releases, official documentation
+- **Verification**: Cross-reference with official documentation and changelog
+- **Stability**: Prefer latest stable over beta/RC unless specifically required
+
+### 2. Dependency Management
+- **requirements.txt**: Always specify latest stable versions
+- **package.json**: Use latest stable versions for Node.js dependencies
+- **pip install**: Use `pip install --upgrade` for latest versions
+- **npm/yarn**: Use `npm update` or `yarn upgrade` for latest versions
+
+### 3. API & Syntax Updates
+- **New syntax**: Use the most current syntax and patterns
+- **Deprecated features**: Avoid deprecated methods, use modern alternatives
+- **API changes**: Follow latest API documentation and patterns
+- **Best practices**: Implement according to latest official guidelines
+
+### 4. Framework-Specific Updates
+
+#### FastAPI
+- Use latest FastAPI version with newest async patterns
+- Implement latest Pydantic v2 features and validation
+- Use current dependency injection patterns
+- Apply latest security best practices
+
+#### Scrapy
+- Use latest Scrapy version with newest async features
+- Implement current spider patterns and middleware
+- Apply latest performance optimizations
+
+#### OpenAI API
+- Use latest OpenAI Python SDK
+- Implement current API patterns and authentication
+- Apply latest rate limiting and error handling
+
+#### Database (PostgreSQL/pgvector)
+- Use latest psycopg2 or asyncpg drivers
+- Implement current connection pooling
+- Apply latest pgvector features and syntax
+
+### 5. Development Tools
+- **Testing**: Use latest pytest features and plugins
+- **Linting**: Apply latest flake8, black, isort configurations
+- **Type checking**: Use latest mypy features and type hints
+- **Code formatting**: Follow latest black and isort standards
+
+### 6. Deployment & Infrastructure
+- **Vercel**: Use latest serverless function patterns
+- **Environment**: Apply latest environment variable practices
+- **Security**: Implement latest security headers and practices
+- **Monitoring**: Use current logging and monitoring patterns
+
+## Version Check Commands
+
+### Python Dependencies
+```bash
+# Check latest versions
+pip list --outdated
+pip install --upgrade package_name
+
+# Check specific package
+pip show package_name
+```
+
+### Node.js Dependencies
+```bash
+# Check outdated packages
+npm outdated
+npm update
+
+# Check specific package
+npm view package_name version
+```
+
+### System-wide Check
+```bash
+# Check all dependencies
+pip list --outdated
+npm outdated
+```
+
+## Documentation Sources
+- **Official docs**: Always reference latest official documentation
+- **Changelog**: Review breaking changes and new features
+- **GitHub releases**: Check for latest stable releases
+- **Community**: Follow latest community best practices
+
+## Implementation Checklist
+- [ ] Check latest version before adding any dependency
+- [ ] Update existing dependencies to latest stable
+- [ ] Review breaking changes and migration guides
+- [ ] Update code to use latest syntax and patterns
+- [ ] Test with latest versions
+- [ ] Update documentation to reflect latest practices
+- [ ] Apply latest security and performance optimizations
+
+## Always Apply
+This rule should be applied automatically whenever:
+- Adding new dependencies
+- Updating existing code
+- Implementing new features
+- Refactoring existing code
+- Deploying to production
+
+## Benefits
+- **Security**: Latest versions include security patches
+- **Performance**: Newer versions often have performance improvements
+- **Features**: Access to latest features and capabilities
+- **Support**: Better community support and documentation
+- **Compatibility**: Better compatibility with other modern tools
+- **Future-proofing**: Code remains maintainable and up-to-date
+
+## Exception Handling
+- **Breaking changes**: If latest version has breaking changes, plan migration
+- **Compatibility**: Ensure all dependencies work together
+- **Testing**: Thoroughly test after version updates
+- **Rollback plan**: Have rollback strategy for critical updates
+
+✅ This rule ensures the project always uses cutting-edge technology with the latest best practices, security updates, and performance optimizations.

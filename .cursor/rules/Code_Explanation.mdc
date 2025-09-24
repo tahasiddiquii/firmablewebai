@@ -1,0 +1,69 @@
+# Code Explanation Rule
+
+## Purpose
+Always provide clear, easy-to-understand explanations of code functionality after each development step.
+
+## Always Apply
+This rule should be applied automatically after every code change, addition, or modification to ensure the user understands what was done and why.
+
+## Explanation Requirements
+
+### What to Explain
+- **What the code does** - Simple description of functionality
+- **Why it's needed** - Purpose and benefits
+- **How it works** - Basic flow and logic
+- **Where it fits** - How it connects to the overall system
+
+### Language Guidelines
+- Use simple, non-technical language when possible
+- Avoid jargon unless necessary, then explain it
+- Use analogies and real-world examples
+- Break down complex concepts into digestible parts
+- Focus on the "why" behind the "what"
+
+### Explanation Format
+After each code change, provide:
+
+1. **Summary** - One sentence overview of what was added/changed
+2. **Functionality** - What the code actually does
+3. **Purpose** - Why this code is important for the project
+4. **Integration** - How it connects to other parts of the system
+5. **Benefits** - What this enables or improves
+
+### Examples of Good Explanations
+
+**Instead of:** "Added async function with Pydantic validation"
+**Say:** "Created a function that can handle multiple requests at the same time and automatically checks that the data coming in is in the right format - like a bouncer at a club who checks IDs before letting people in"
+
+**Instead of:** "Implemented RAG with vector embeddings"
+**Say:** "Built a smart search system that can find relevant information from the website content by understanding the meaning of words, not just matching exact text - like having a librarian who can find books by understanding what you're looking for, even if you don't use the exact same words"
+
+### When to Apply
+- After creating new files
+- After modifying existing code
+- After adding dependencies
+- After implementing features
+- After fixing bugs
+- After refactoring code
+- After adding tests
+
+### Always Include
+- **Real-world analogy** when possible
+- **Step-by-step breakdown** for complex functionality
+- **Connection to project goals** (scraping, AI analysis, etc.)
+- **User benefit** - what this means for the end user
+- **Next steps** - what this enables or what comes next
+
+## Example Explanations
+
+### For a Scraper Function:
+"This function is like a digital detective that visits a website and carefully collects all the important information from the homepage - the title, what the company does, their contact details, and key messages. It's the first step in our AI analysis because we need this raw data before we can extract business insights."
+
+### For an AI Analysis Function:
+"This is our AI business analyst that takes all the website information and figures out what kind of business it is, who they serve, and what makes them special. It's like having an expert consultant who can instantly understand any company just by looking at their website."
+
+### For a Database Function:
+"This function safely stores all the website information and AI insights in our database, like a filing cabinet that keeps everything organized and easy to find later. It also creates a searchable index so we can quickly find relevant information when users ask questions."
+
+## Always Apply
+This rule ensures that every code change is accompanied by clear, understandable explanations that help the user learn and understand the development process.

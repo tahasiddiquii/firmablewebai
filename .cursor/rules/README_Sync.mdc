@@ -1,0 +1,63 @@
+---
+alwaysApply: true
+---
+
+# README Auto-Sync Rule
+
+## Purpose
+Automatically update README.md whenever there are changes to the project to keep documentation synchronized.
+
+## Trigger Conditions
+- Any file modification in the project
+- New files added
+- Code changes in any directory
+- Configuration updates
+- Dependencies changes
+
+## Auto-Update Actions
+1. **Read current README.md** - Check existing content
+2. **Analyze project changes** - Identify what was modified/added/removed
+3. **Update relevant sections** - Revise/add/delete content as needed
+4. **Maintain structure** - Keep consistent formatting and organization
+5. **Version tracking** - Update timestamps and change logs
+
+## Update Rules
+- **New features** → Add to features section
+- **API changes** → Update endpoint documentation
+- **Dependencies** → Update requirements/installation
+- **Configuration** → Update setup instructions
+- **File structure** → Update project layout
+- **Code examples** → Update usage examples
+- **Deployment** → Update deployment instructions
+
+## Always Apply
+This rule should be applied automatically on every change to ensure README.md stays current and accurate.# README Auto-Sync Rule
+
+## Purpose
+Automatically update README.md whenever there are changes to the project to keep documentation synchronized.
+
+## Trigger Conditions
+- Any file modification in the project
+- New files added
+- Code changes in any directory
+- Configuration updates
+- Dependencies changes
+
+## Auto-Update Actions
+1. **Read current README.md** - Check existing content
+2. **Analyze project changes** - Identify what was modified/added/removed
+3. **Update relevant sections** - Revise/add/delete content as needed
+4. **Maintain structure** - Keep consistent formatting and organization
+5. **Version tracking** - Update timestamps and change logs
+
+## Update Rules
+- **New features** → Add to features section
+- **API changes** → Update endpoint documentation
+- **Dependencies** → Update requirements/installation
+- **Configuration** → Update setup instructions
+- **File structure** → Update project layout
+- **Code examples** → Update usage examples
+- **Deployment** → Update deployment instructions
+
+## Always Apply
+This rule should be applied automatically on every change to ensure README.md stays current and accurate.
