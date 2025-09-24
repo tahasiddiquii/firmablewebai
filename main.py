@@ -360,15 +360,19 @@ def process_demo_query(url: str, query: str, conversation_history: list):
         "conversation_history": updated_history
     }
 
-# Railway deployment entry point
+# Startup logging - this will show in Railway logs
+print(f"FirmableWebAI starting up...")
+print(f"Live mode: {LIVE_MODE}")
+print(f"Environment variables:")
+print(f"  - OPENAI_API_KEY: {'✓' if os.getenv('OPENAI_API_KEY') else '✗'}")
+print(f"  - POSTGRES_URL: {'✓' if os.getenv('POSTGRES_URL') else '✗'}")
+print(f"  - API_SECRET_KEY: {'✓' if os.getenv('API_SECRET_KEY') else '✗ (using demo)'}")
+print(f"  - PORT: {os.getenv('PORT', 'not set')}")
+
+# Railway deployment entry point (only for local testing)
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8000))
-    print(f"Starting FirmableWebAI on port {port}")
-    print(f"Live mode: {LIVE_MODE}")
-    print(f"Environment variables:")
-    print(f"  - OPENAI_API_KEY: {'✓' if os.getenv('OPENAI_API_KEY') else '✗'}")
-    print(f"  - POSTGRES_URL: {'✓' if os.getenv('POSTGRES_URL') else '✗'}")
-    print(f"  - API_SECRET_KEY: {'✓' if os.getenv('API_SECRET_KEY') else '✗ (using demo)'}")
+    print(f"Starting FirmableWebAI locally on port {port}")
     
     uvicorn.run(
         "main:app",
