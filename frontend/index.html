@@ -11,8 +11,8 @@
     <script src="https://cdn.jsdelivr.net/npm/vanta@latest/dist/vanta.dots.min.js"></script>
     <style>
         :root {
-            --primary-accent: #00BFA5;
-            --primary-accent-hover: #00A693;
+            --primary-accent: #007AFF;
+            --primary-accent-hover: #0056CC;
             --secondary-accent: #A0A0A5;
             --background-primary: #121212;
             --background-secondary: #1E1E1E;
@@ -30,7 +30,7 @@
             --border-radius: 8px;
             --border-radius-large: 12px;
             --transition-smooth: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            --gradient-primary: linear-gradient(135deg, #00BFA5 0%, #00A693 100%);
+            --gradient-primary: linear-gradient(135deg, #007AFF 0%, #0056CC 100%);
             --gradient-bg: linear-gradient(135deg, #121212 0%, #1E1E1E 100%);
         }
 
@@ -80,12 +80,12 @@
             height: 60px;
             width: auto;
             margin-bottom: 12px;
-            filter: drop-shadow(0 2px 8px rgba(0, 191, 165, 0.3));
+            filter: drop-shadow(0 2px 8px rgba(0, 122, 255, 0.3));
             transition: var(--transition-smooth);
         }
 
         .header .logo:hover {
-            filter: drop-shadow(0 4px 12px rgba(0, 191, 165, 0.4));
+            filter: drop-shadow(0 4px 12px rgba(0, 122, 255, 0.4));
             transform: scale(1.02);
         }
 
@@ -149,7 +149,7 @@
         .url-input:focus {
             border-color: var(--primary-accent);
             background: var(--background-tertiary);
-            box-shadow: 0 0 0 3px rgba(0, 191, 165, 0.1);
+            box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.1);
         }
 
         .url-input::placeholder {
@@ -424,7 +424,7 @@
         .chat-input:focus {
             border-color: var(--primary-accent);
             background: var(--background-tertiary);
-            box-shadow: 0 0 0 3px rgba(0, 191, 165, 0.1);
+            box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.1);
         }
 
         .chat-input::placeholder {
@@ -513,7 +513,7 @@
             .input-container {
                 padding: 30px;
             }
-
+            
             .main-content {
                 flex-direction: column;
                 gap: 20px;
@@ -564,12 +564,12 @@
 <body>
     <div id="vanta-background"></div>
     <div class="header">
-        <div class="container">
+    <div class="container">
             <img src="/static/assets/images/logo-final-02-ai-2.svg" alt="FirmableWebAI" class="logo">
             <h1>Website-derived company insights</h1>
             <p>Premium AI-powered website analysis with intelligent insights and conversational intelligence</p>
         </div>
-    </div>
+        </div>
 
     <div class="container">
         <section class="input-section">
@@ -597,10 +597,10 @@
                     <h2>Analysis Complete</h2>
                     <div class="status">Premium AI insights generated successfully</div>
                 </div>
-
+                
                 <div class="insights-grid" id="insightsGrid">
                     <!-- Insights will be dynamically generated here -->
-                </div>
+            </div>
 
                 <button class="chat-button" id="chatButton">
                     Chat with Insights
@@ -612,7 +612,7 @@
                     <h3 class="chat-title">AI Assistant</h3>
                     <p class="chat-subtitle">Ask questions about the analyzed website</p>
                 </div>
-
+                
                 <div class="chat-messages" id="chatMessages">
                     <div class="message assistant">
                         <div class="message-bubble">
@@ -638,7 +638,7 @@
                         placeholder="Ask about the website..."
                     >
                     <button class="send-button" id="sendButton">Send</button>
-                </div>
+            </div>
             </section>
         </div>
     </div>

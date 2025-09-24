@@ -21,7 +21,7 @@ class SimpleScraperRunner:
     async def _get_session(self):
         """Get or create aiohttp session with comprehensive headers"""
         if not self.session:
-            timeout = aiohttp.ClientTimeout(total=45)  # Increased timeout
+            timeout = aiohttp.ClientTimeout(total=45)
             self.session = aiohttp.ClientSession(
                 timeout=timeout,
                 headers={
@@ -66,63 +66,298 @@ class SimpleScraperRunner:
         
         raise Exception("Max retries exceeded")
     
+    def _remove_noise_elements(self, soup: BeautifulSoup) -> None:
+        """Remove noise elements before parsing for better performance and focus"""
+        noise_selectors = [
+            'script', 'style', 'noscript', 'iframe', 'embed', 'object', 'footer',
+            '.advertisement', '.ads', '.cookie-banner', '.popup', '.modal',
+            '.social-share', '.comments', '.sidebar', '.footer-links',
+            '[class*="ad-"]', '[id*="ad-"]', '[class*="advertisement"]',
+            '[class*="banner"]', '[class*="popup"]', '[id*="popup"]',
+            '.newsletter-signup', '.subscription', '.tracking', '.gdpr',
+            '[class*="cookie"]', '[id*="cookie"]', '.overlay'
+        ]
+        
+        for selector in noise_selectors:
+            for element in soup.select(selector):
+                element.decompose()
+    
+    def _extract_contact_info_from_text(self, text: str) -> Dict[str, Any]:
+        """Extract contact information from clean text using regex"""
+        contact_info = {}
+        
+        # Extract email addresses from clean text
+        email_pattern = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
+        emails = re.findall(email_pattern, text)
+        if emails:
+            # Remove duplicates and filter out common false positives
+            filtered_emails = []
+            for email in set(emails):
+                if not any(skip in email.lower() for skip in ['example.com', 'test.com', 'placeholder']):
+                    filtered_emails.append(email)
+            if filtered_emails:
+                contact_info['emails'] = filtered_emails
+        
+        # Extract phone numbers from clean text
+        phone_patterns = [
+            r'(\+?1[-.\s]?)?\(?([0-9]{3})\)?[-.\s]?([0-9]{3})[-.\s]?([0-9]{4})',
+            r'\+?[1-9]\d{1,14}',  # International format
+            r'\b\d{3}[-.\s]?\d{3}[-.\s]?\d{4}\b'  # US format variations
+        ]
+        
+        phones = []
+        for pattern in phone_patterns:
+            matches = re.findall(pattern, text)
+            if matches:
+                if isinstance(matches[0], tuple):
+                    phones.extend([''.join(phone) for phone in matches])
+                else:
+                    phones.extend(matches)
+        
+        if phones:
+            # Clean and deduplicate phone numbers
+            clean_phones = []
+            for phone in set(phones):
+                # Remove common separators and keep only digits and +
+                clean_phone = re.sub(r'[^\d+]', '', phone)
+                if len(clean_phone) >= 10:  # Minimum valid phone length
+                    clean_phones.append(phone)
+            if clean_phones:
+                contact_info['phones'] = clean_phones
+        
+        # Extract addresses from clean text
+        address_pattern = r'\d+\s+[A-Za-z\s]+(?:Street|St|Avenue|Ave|Road|Rd|Boulevard|Blvd|Drive|Dr|Lane|Ln|Way|Place|Pl|Circle|Cir|Court|Ct)'
+        addresses = re.findall(address_pattern, text, re.IGNORECASE)
+        if addresses:
+            contact_info['addresses'] = list(set(addresses))
+        
+        return contact_info
+    
+    def _extract_all_content_single_pass(self, soup: BeautifulSoup, base_url: str) -> Dict[str, Any]:
+        """Single-pass extraction of all content from the cleaned soup"""
+        content = {
+            'title': None,
+            'meta_description': None,
+            'headings': [],
+            'main_content': '',
+            'hero_section': '',
+            'products': [],
+            'contact_info': {},
+            'business_links': [],
+            'structured_data': {},
+            'visible_text': ''
+        }
+        
+        # Extract title
+        title_tag = soup.find('title')
+        if title_tag:
+            content['title'] = title_tag.get_text().strip()
+        
+        # Extract meta description
+        meta_desc = soup.find('meta', attrs={'name': 'description'})
+        if not meta_desc:
+            meta_desc = soup.find('meta', attrs={'property': 'og:description'})
+        if meta_desc:
+            content['meta_description'] = meta_desc.get('content', '').strip()
+        
+        # Extract structured data (JSON-LD)
+        json_ld_scripts = soup.find_all('script', type='application/ld+json')
+        for script in json_ld_scripts:
+            try:
+                data = json.loads(script.string)
+                content['structured_data'] = data
+                break  # Take first valid JSON-LD
+            except (json.JSONDecodeError, AttributeError):
+                pass
+        
+        # Single traversal for all content extraction
+        business_keywords = [
+            'about', 'contact', 'services', 'products', 'pricing', 'features',
+            'solutions', 'company', 'team', 'careers', 'blog', 'news'
+        ]
+        
+        product_keywords = [
+            'product', 'service', 'feature', 'offering', 'solution'
+        ]
+        
+        hero_selectors = [
+            '.hero', '.hero-section', '.banner', '.jumbotron', 
+            '.hero-banner', 'header .container', '.intro'
+        ]
+        
+        main_content_selectors = [
+            'main', 'article', '.content', '.main-content', 
+            '.page-content', '#content', '.container'
+        ]
+        
+        # Traverse all elements once
+        for element in soup.find_all(True):  # Find all tags
+            tag_name = element.name
+            element_text = element.get_text().strip()
+            element_classes = element.get('class', [])
+            element_id = element.get('id', '')
+            
+            # Extract headings
+            if tag_name in ['h1', 'h2', 'h3', 'h4', 'h5', 'h6'] and element_text:
+                content['headings'].append(element_text)
+            
+            # Extract business links
+            if tag_name == 'a' and element.get('href'):
+                href = element.get('href')
+                link_text = element_text.lower()
+                
+                if (not href.startswith(('#', 'javascript:', 'mailto:')) and 
+                    element_text and 
+                    any(keyword in link_text or keyword in href.lower() for keyword in business_keywords)):
+                    
+                    # Convert relative URLs
+                    if href.startswith('/'):
+                        href = urljoin(base_url, href)
+                    
+                    content['business_links'].append({
+                        'text': element_text[:100],
+                        'url': href
+                    })
+                    
+                    if len(content['business_links']) >= 10:  # Limit
+                        break
+            
+            # Check for hero sections
+            if (any(hero_class in ' '.join(element_classes).lower() for hero_class in [cls.strip('.') for cls in hero_selectors]) or
+                any(hero_id in element_id.lower() for hero_id in ['hero', 'banner', 'intro'])):
+                if element_text and len(element_text) > 50 and not content['hero_section']:
+                    content['hero_section'] = self._clean_text(element_text)
+            
+            # Check for main content
+            if (tag_name in ['main', 'article'] or 
+                any(main_class in ' '.join(element_classes).lower() for main_class in ['content', 'main-content', 'page-content']) or
+                element_id in ['content', 'main-content']):
+                if element_text and len(element_text) > 200 and not content['main_content']:
+                    content['main_content'] = self._clean_text(element_text)
+            
+            # Check for products/services
+            if (any(prod_keyword in ' '.join(element_classes).lower() for prod_keyword in product_keywords) or
+                any(prod_keyword in element_text.lower() for prod_keyword in product_keywords)):
+                if element_text and 10 < len(element_text) < 200:
+                    content['products'].append(self._clean_text(element_text))
+        
+        # Extract visible text after cleaning
+        content['visible_text'] = soup.get_text(separator=' ', strip=True)
+        content['visible_text'] = self._clean_text(content['visible_text'])
+        
+        # Extract contact info from clean visible text
+        content['contact_info'] = self._extract_contact_info_from_text(content['visible_text'])
+        
+        # Add social media links from contact info extraction
+        social_links = []
+        for link in soup.find_all('a', href=True):
+            href = link['href']
+            if any(social in href.lower() for social in ['facebook', 'twitter', 'linkedin', 'instagram', 'youtube']):
+                social_links.append(href)
+        if social_links:
+            content['contact_info']['social_links'] = social_links[:5]  # Limit to 5
+        
+        # Remove duplicates and limit sizes
+        content['headings'] = list(dict.fromkeys(content['headings']))[:15]  # Remove duplicates, limit to 15
+        content['products'] = list(dict.fromkeys(content['products']))[:10]  # Remove duplicates, limit to 10
+        
+        return content
+    
+    def _clean_text(self, text: str) -> str:
+        """Clean and normalize text"""
+        # Remove extra whitespace
+        text = re.sub(r'\s+', ' ', text)
+        # Remove special characters but keep basic punctuation
+        text = re.sub(r'[^\w\s.,!?;:()\-@+]', '', text)
+        return text.strip()
+    
+    def _generate_focused_raw_text(self, content: Dict[str, Any]) -> str:
+        """Generate focused business text from extracted content"""
+        content_parts = []
+        
+        # Title and meta (most important)
+        if content['title']:
+            content_parts.append(f"TITLE: {content['title']}")
+        
+        if content['meta_description']:
+            content_parts.append(f"DESCRIPTION: {content['meta_description']}")
+        
+        # Key headings (limited)
+        if content['headings']:
+            headings_text = ' | '.join(content['headings'][:10])
+            content_parts.append(f"HEADINGS: {headings_text}")
+        
+        # Main content (truncated for performance)
+        if content['main_content']:
+            main_truncated = content['main_content'][:2000]
+            content_parts.append(f"CONTENT: {main_truncated}")
+        
+        # Hero section
+        if content['hero_section']:
+            hero_truncated = content['hero_section'][:1000]
+            content_parts.append(f"HERO: {hero_truncated}")
+        
+        # Products (limited)
+        if content['products']:
+            products_text = ' | '.join(content['products'][:5])
+            content_parts.append(f"PRODUCTS: {products_text}")
+        
+        # Business links (limited)
+        if content['business_links']:
+            links_text = ' | '.join([link['text'] for link in content['business_links'][:5]])
+            content_parts.append(f"NAVIGATION: {links_text}")
+        
+        # Structured data (limited)
+        if content['structured_data']:
+            try:
+                structured_text = json.dumps(content['structured_data'])[:500]
+                content_parts.append(f"STRUCTURED: {structured_text}")
+            except:
+                pass
+        
+        final_text = ' || '.join(content_parts)
+        
+        # Final safety limit - never exceed 5000 characters
+        if len(final_text) > 5000:
+            final_text = final_text[:5000] + "..."
+        
+        return final_text
+    
     async def scrape_website(self, url: str) -> ScrapedContent:
-        """Scrape a website comprehensively - capture EVERYTHING possible"""
+        """Optimized single-pass scraping with lxml parser"""
         try:
             session = await self._get_session()
             
-            print(f"🔍 Starting comprehensive scrape of: {url}")
+            print(f"🎯 Starting optimized scrape of: {url}")
             
             # Fetch the webpage with retries
             html = await self._fetch_with_retries(session, url)
-            soup = BeautifulSoup(html, 'html.parser')
+            
+            # Use lxml parser for better performance
+            soup = BeautifulSoup(html, 'lxml')
             
             print(f"📄 HTML content length: {len(html)} characters")
             
-            # Extract ALL possible content
-            title = self._extract_title(soup)
-            meta_description = self._extract_meta_description(soup)
-            all_meta_tags = self._extract_all_meta_tags(soup)
-            headings = self._extract_headings(soup)
-            main_content = self._extract_main_content(soup)
-            hero_section = self._extract_hero_section(soup)
-            products = self._extract_products(soup)
-            contact_info = self._extract_contact_info(soup, html)
+            # Remove noise elements early for better performance
+            self._remove_noise_elements(soup)
             
-            # NEW: Extract everything else
-            all_links = self._extract_all_links(soup, url)
-            all_images = self._extract_all_images(soup, url)
-            structured_data = self._extract_structured_data(soup)
-            navigation_content = self._extract_navigation(soup)
-            footer_content = self._extract_footer(soup)
-            forms_content = self._extract_forms(soup)
-            tables_content = self._extract_tables(soup)
-            lists_content = self._extract_lists(soup)
+            # Single-pass extraction of all content
+            content = self._extract_all_content_single_pass(soup, url)
             
-            # Generate comprehensive raw text
-            raw_text = self._extract_comprehensive_text(soup, {
-                'meta_tags': all_meta_tags,
-                'links': all_links,
-                'images': all_images,
-                'structured_data': structured_data,
-                'navigation': navigation_content,
-                'footer': footer_content,
-                'forms': forms_content,
-                'tables': tables_content,
-                'lists': lists_content
-            })
+            # Generate focused raw text
+            raw_text = self._generate_focused_raw_text(content)
             
-            print(f"✅ Extracted {len(raw_text)} characters of comprehensive content")
-            print(f"📊 Found: {len(headings)} headings, {len(all_links)} links, {len(all_images)} images")
+            print(f"✅ Extracted {len(raw_text)} characters of focused business content")
+            print(f"📊 Found: {len(content['headings'])} headings, {len(content['business_links'])} business links")
             
             return ScrapedContent(
-                title=title,
-                meta_description=meta_description,
-                headings=headings,
-                main_content=main_content,
-                hero_section=hero_section,
-                products=products,
-                contact_info=contact_info,
+                title=content['title'],
+                meta_description=content['meta_description'],
+                headings=content['headings'],
+                main_content=content['main_content'],
+                hero_section=content['hero_section'],
+                products=content['products'],
+                contact_info=content['contact_info'],
                 raw_text=raw_text
             )
                 
@@ -139,437 +374,6 @@ class SimpleScraperRunner:
                 contact_info={},
                 raw_text=""
             )
-    
-    def _extract_title(self, soup: BeautifulSoup) -> str:
-        """Extract page title"""
-        title_tag = soup.find('title')
-        return title_tag.get_text().strip() if title_tag else None
-    
-    def _extract_meta_description(self, soup: BeautifulSoup) -> str:
-        """Extract meta description"""
-        meta = soup.find('meta', attrs={'name': 'description'})
-        if not meta:
-            meta = soup.find('meta', attrs={'property': 'og:description'})
-        return meta.get('content', '').strip() if meta else None
-    
-    def _extract_headings(self, soup: BeautifulSoup) -> List[str]:
-        """Extract all headings"""
-        headings = []
-        for tag in soup.find_all(['h1', 'h2', 'h3', 'h4', 'h5', 'h6']):
-            text = tag.get_text().strip()
-            if text:
-                headings.append(text)
-        return headings
-    
-    def _extract_main_content(self, soup: BeautifulSoup) -> str:
-        """Extract main content using various selectors"""
-        content_selectors = [
-            'main',
-            'article',
-            '.content',
-            '.main-content',
-            '.page-content',
-            '#content',
-            '.container',
-            'body'
-        ]
-        
-        for selector in content_selectors:
-            if selector.startswith('.') or selector.startswith('#'):
-                elements = soup.select(selector)
-            else:
-                elements = soup.find_all(selector)
-            
-            for element in elements:
-                text = element.get_text().strip()
-                if len(text) > 200:  # Ensure substantial content
-                    return self._clean_text(text)
-        
-        return ""
-    
-    def _extract_hero_section(self, soup: BeautifulSoup) -> str:
-        """Extract hero section content"""
-        hero_selectors = [
-            '.hero',
-            '.hero-section',
-            '.banner',
-            '.jumbotron',
-            '.hero-banner',
-            'header .container',
-            '.intro'
-        ]
-        
-        for selector in hero_selectors:
-            elements = soup.select(selector)
-            for element in elements:
-                text = element.get_text().strip()
-                if text and len(text) > 50:
-                    return self._clean_text(text)
-        
-        return ""
-    
-    def _extract_products(self, soup: BeautifulSoup) -> List[str]:
-        """Extract products/services mentioned"""
-        products = []
-        
-        # Look for product-related sections
-        product_selectors = [
-            '.product',
-            '.service',
-            '.feature',
-            '.offering',
-            '[class*="product"]',
-            '[class*="service"]',
-            '[class*="feature"]'
-        ]
-        
-        for selector in product_selectors:
-            elements = soup.select(selector)
-            for element in elements:
-                text = element.get_text().strip()
-                if text and len(text) > 10 and len(text) < 200:
-                    products.append(self._clean_text(text))
-        
-        # Also look for product names in headings
-        for heading in soup.find_all(['h1', 'h2', 'h3', 'h4', 'h5', 'h6']):
-            text = heading.get_text().strip()
-            if text and len(text) < 100:  # Reasonable product name length
-                products.append(text)
-        
-        return list(set(products))  # Remove duplicates
-    
-    def _extract_contact_info(self, soup: BeautifulSoup, html: str) -> Dict[str, Any]:
-        """Extract contact information"""
-        contact_info = {}
-        
-        # Extract email addresses
-        email_pattern = r'\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Z|a-z]{2,}\b'
-        emails = re.findall(email_pattern, html)
-        if emails:
-            contact_info['emails'] = list(set(emails))
-        
-        # Extract phone numbers
-        phone_pattern = r'(\+?1[-.\s]?)?\(?([0-9]{3})\)?[-.\s]?([0-9]{3})[-.\s]?([0-9]{4})'
-        phones = re.findall(phone_pattern, html)
-        if phones:
-            contact_info['phones'] = [''.join(phone) for phone in phones]
-        
-        # Extract addresses (basic pattern)
-        address_pattern = r'\d+\s+[A-Za-z\s]+(?:Street|St|Avenue|Ave|Road|Rd|Boulevard|Blvd|Drive|Dr|Lane|Ln|Way|Place|Pl)'
-        addresses = re.findall(address_pattern, html)
-        if addresses:
-            contact_info['addresses'] = addresses
-        
-        # Extract social media links
-        social_links = []
-        for link in soup.find_all('a', href=True):
-            href = link['href']
-            if any(social in href for social in ['facebook', 'twitter', 'linkedin', 'instagram']):
-                social_links.append(href)
-        if social_links:
-            contact_info['social_links'] = social_links
-        
-        return contact_info
-    
-    def _extract_raw_text(self, soup: BeautifulSoup) -> str:
-        """Extract all text content from the page"""
-        text = soup.get_text()
-        return self._clean_text(text)
-    
-    def _clean_text(self, text: str) -> str:
-        """Clean and normalize text"""
-        # Remove extra whitespace
-        text = re.sub(r'\s+', ' ', text)
-        # Remove special characters but keep basic punctuation
-        text = re.sub(r'[^\w\s.,!?;:()\-]', '', text)
-        return text.strip()
-    
-    # NEW COMPREHENSIVE EXTRACTION METHODS
-    
-    def _extract_all_meta_tags(self, soup: BeautifulSoup) -> Dict[str, str]:
-        """Extract ALL meta tags"""
-        meta_tags = {}
-        for meta in soup.find_all('meta'):
-            # Get name-based meta tags
-            if meta.get('name'):
-                meta_tags[f"meta_name_{meta.get('name')}"] = meta.get('content', '')
-            # Get property-based meta tags (Open Graph, etc.)
-            if meta.get('property'):
-                meta_tags[f"meta_property_{meta.get('property')}"] = meta.get('content', '')
-            # Get http-equiv meta tags
-            if meta.get('http-equiv'):
-                meta_tags[f"meta_http_equiv_{meta.get('http-equiv')}"] = meta.get('content', '')
-        return meta_tags
-    
-    def _extract_all_links(self, soup: BeautifulSoup, base_url: str) -> List[Dict[str, str]]:
-        """Extract ALL links with context"""
-        links = []
-        for link in soup.find_all('a', href=True):
-            href = link['href']
-            # Convert relative URLs to absolute
-            if href.startswith('/'):
-                href = urljoin(base_url, href)
-            
-            link_text = link.get_text().strip()
-            link_title = link.get('title', '')
-            
-            if link_text or link_title:  # Only include links with text
-                links.append({
-                    'url': href,
-                    'text': link_text,
-                    'title': link_title,
-                    'context': self._get_element_context(link)
-                })
-        return links
-    
-    def _extract_all_images(self, soup: BeautifulSoup, base_url: str) -> List[Dict[str, str]]:
-        """Extract ALL images with alt text and context"""
-        images = []
-        for img in soup.find_all('img'):
-            src = img.get('src', '')
-            if src.startswith('/'):
-                src = urljoin(base_url, src)
-            
-            alt_text = img.get('alt', '')
-            title = img.get('title', '')
-            
-            images.append({
-                'src': src,
-                'alt': alt_text,
-                'title': title,
-                'context': self._get_element_context(img)
-            })
-        return images
-    
-    def _extract_structured_data(self, soup: BeautifulSoup) -> Dict[str, Any]:
-        """Extract JSON-LD and other structured data"""
-        structured_data = {}
-        
-        # Extract JSON-LD
-        json_ld_scripts = soup.find_all('script', type='application/ld+json')
-        for script in json_ld_scripts:
-            try:
-                data = json.loads(script.string)
-                structured_data['json_ld'] = data
-            except (json.JSONDecodeError, AttributeError):
-                pass
-        
-        # Extract microdata
-        microdata_items = soup.find_all(attrs={'itemscope': True})
-        if microdata_items:
-            structured_data['microdata'] = []
-            for item in microdata_items:
-                item_type = item.get('itemtype', '')
-                item_props = {}
-                for prop in item.find_all(attrs={'itemprop': True}):
-                    prop_name = prop.get('itemprop')
-                    prop_value = prop.get('content') or prop.get_text().strip()
-                    item_props[prop_name] = prop_value
-                
-                if item_props:
-                    structured_data['microdata'].append({
-                        'type': item_type,
-                        'properties': item_props
-                    })
-        
-        return structured_data
-    
-    def _extract_navigation(self, soup: BeautifulSoup) -> str:
-        """Extract navigation content"""
-        nav_content = []
-        
-        # Find navigation elements
-        nav_selectors = ['nav', '.navigation', '.nav', '.menu', 'header nav', '.header-menu']
-        
-        for selector in nav_selectors:
-            if selector.startswith('.'):
-                elements = soup.select(selector)
-            else:
-                elements = soup.find_all(selector) if ' ' not in selector else soup.select(selector)
-            
-            for element in elements:
-                text = element.get_text().strip()
-                if text and len(text) > 10:
-                    nav_content.append(self._clean_text(text))
-        
-        return ' | '.join(nav_content)
-    
-    def _extract_footer(self, soup: BeautifulSoup) -> str:
-        """Extract footer content"""
-        footer_content = []
-        
-        footer_selectors = ['footer', '.footer', '.site-footer', '.page-footer']
-        
-        for selector in footer_selectors:
-            if selector.startswith('.'):
-                elements = soup.select(selector)
-            else:
-                elements = soup.find_all(selector)
-            
-            for element in elements:
-                text = element.get_text().strip()
-                if text and len(text) > 20:
-                    footer_content.append(self._clean_text(text))
-        
-        return ' | '.join(footer_content)
-    
-    def _extract_forms(self, soup: BeautifulSoup) -> List[Dict[str, Any]]:
-        """Extract form information"""
-        forms = []
-        
-        for form in soup.find_all('form'):
-            form_data = {
-                'action': form.get('action', ''),
-                'method': form.get('method', 'get'),
-                'fields': []
-            }
-            
-            # Extract form fields
-            for field in form.find_all(['input', 'select', 'textarea']):
-                field_type = field.get('type', field.name)
-                field_name = field.get('name', '')
-                field_placeholder = field.get('placeholder', '')
-                field_label = ''
-                
-                # Try to find associated label
-                if field.get('id'):
-                    label = form.find('label', {'for': field.get('id')})
-                    if label:
-                        field_label = label.get_text().strip()
-                
-                if field_name or field_placeholder or field_label:
-                    form_data['fields'].append({
-                        'type': field_type,
-                        'name': field_name,
-                        'placeholder': field_placeholder,
-                        'label': field_label
-                    })
-            
-            if form_data['fields']:
-                forms.append(form_data)
-        
-        return forms
-    
-    def _extract_tables(self, soup: BeautifulSoup) -> List[str]:
-        """Extract table content"""
-        tables = []
-        
-        for table in soup.find_all('table'):
-            table_text = []
-            
-            # Extract headers
-            headers = table.find_all('th')
-            if headers:
-                header_text = ' | '.join([th.get_text().strip() for th in headers])
-                table_text.append(f"Headers: {header_text}")
-            
-            # Extract rows
-            rows = table.find_all('tr')
-            for row in rows[:5]:  # Limit to first 5 rows
-                cells = row.find_all(['td', 'th'])
-                if cells:
-                    row_text = ' | '.join([cell.get_text().strip() for cell in cells])
-                    if row_text:
-                        table_text.append(row_text)
-            
-            if table_text:
-                tables.append(' || '.join(table_text))
-        
-        return tables
-    
-    def _extract_lists(self, soup: BeautifulSoup) -> List[str]:
-        """Extract list content"""
-        lists = []
-        
-        for list_elem in soup.find_all(['ul', 'ol']):
-            list_items = []
-            for li in list_elem.find_all('li'):
-                text = li.get_text().strip()
-                if text and len(text) < 200:  # Reasonable list item length
-                    list_items.append(text)
-            
-            if list_items and len(list_items) > 1:
-                lists.append(' • '.join(list_items[:10]))  # Limit to 10 items
-        
-        return lists
-    
-    def _get_element_context(self, element) -> str:
-        """Get context around an element"""
-        context = []
-        
-        # Get parent element text (limited)
-        parent = element.parent
-        if parent and parent.name not in ['html', 'body']:
-            parent_text = parent.get_text().strip()
-            if len(parent_text) < 200:
-                context.append(parent_text[:100])
-        
-        # Get sibling elements
-        for sibling in element.find_next_siblings(limit=2):
-            if sibling.name:
-                sibling_text = sibling.get_text().strip()
-                if sibling_text and len(sibling_text) < 100:
-                    context.append(sibling_text[:50])
-        
-        return ' '.join(context)
-    
-    def _extract_comprehensive_text(self, soup: BeautifulSoup, extracted_data: Dict) -> str:
-        """Generate comprehensive text from all extracted data"""
-        content_parts = []
-        
-        # Start with basic page text (but don't remove scripts/styles yet)
-        # We want to keep everything for LLM analysis
-        page_text = soup.get_text()
-        content_parts.append(f"PAGE_CONTENT: {self._clean_text(page_text)}")
-        
-        # Add meta tags information
-        if extracted_data['meta_tags']:
-            meta_text = ' '.join([f"{k}:{v}" for k, v in extracted_data['meta_tags'].items() if v])
-            content_parts.append(f"META_TAGS: {meta_text}")
-        
-        # Add links information
-        if extracted_data['links']:
-            links_text = ' '.join([f"LINK({link['text']}:{link['url']})" for link in extracted_data['links'][:20] if link['text']])
-            content_parts.append(f"LINKS: {links_text}")
-        
-        # Add images information
-        if extracted_data['images']:
-            images_text = ' '.join([f"IMAGE({img['alt']})" for img in extracted_data['images'][:10] if img['alt']])
-            if images_text:
-                content_parts.append(f"IMAGES: {images_text}")
-        
-        # Add structured data
-        if extracted_data['structured_data']:
-            try:
-                structured_text = json.dumps(extracted_data['structured_data'])[:1000]  # Limit size
-                content_parts.append(f"STRUCTURED_DATA: {structured_text}")
-            except:
-                pass
-        
-        # Add navigation
-        if extracted_data['navigation']:
-            content_parts.append(f"NAVIGATION: {extracted_data['navigation']}")
-        
-        # Add footer
-        if extracted_data['footer']:
-            content_parts.append(f"FOOTER: {extracted_data['footer']}")
-        
-        # Add forms
-        if extracted_data['forms']:
-            forms_text = ' '.join([f"FORM({form['method']}:{','.join([f['name'] for f in form['fields'] if f['name']])})" for form in extracted_data['forms']])
-            content_parts.append(f"FORMS: {forms_text}")
-        
-        # Add tables
-        if extracted_data['tables']:
-            tables_text = ' '.join(extracted_data['tables'][:3])  # Limit to 3 tables
-            content_parts.append(f"TABLES: {tables_text}")
-        
-        # Add lists
-        if extracted_data['lists']:
-            lists_text = ' '.join(extracted_data['lists'][:5])  # Limit to 5 lists
-            content_parts.append(f"LISTS: {lists_text}")
-        
-        return ' || '.join(content_parts)
     
     async def close(self):
         """Close the session"""
