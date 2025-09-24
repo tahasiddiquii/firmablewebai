@@ -5,7 +5,6 @@ AI-powered backend for extracting business insights from website homepages
 
 from fastapi import FastAPI, HTTPException, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 import os
@@ -47,8 +46,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Security
-security = HTTPBearer()
 
 # Mount static files for frontend assets
 try:
@@ -116,14 +113,6 @@ except ImportError as e:
     print(f"Critical import error - service unavailable: {e}")
     LIVE_MODE = False
 
-def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
-    """Verify Bearer token"""
-    expected_token = os.getenv("API_SECRET_KEY")
-    if not expected_token:
-        raise HTTPException(status_code=500, detail="API_SECRET_KEY environment variable not configured")
-    if credentials.credentials != expected_token:
-        raise HTTPException(status_code=401, detail="Invalid authentication token")
-    return credentials.credentials
 
 # Root endpoint - serve the Apple-style frontend
 @app.get("/", response_class=HTMLResponse)
@@ -186,8 +175,7 @@ async def health():
         "mode": "live" if LIVE_MODE else "unavailable",
         "environment_variables": {
             "OPENAI_API_KEY": "✓" if os.getenv("OPENAI_API_KEY") else "✗",
-            "POSTGRES_URL": "✓" if os.getenv("POSTGRES_URL") else "✗",
-            "API_SECRET_KEY": "✓" if os.getenv("API_SECRET_KEY") else "✗"
+            "POSTGRES_URL": "✓" if os.getenv("POSTGRES_URL") else "✗"
         }
     }
 
@@ -195,7 +183,6 @@ async def health():
 @app.post("/api/insights", response_model=InsightsResponse)
 async def analyze_website(
     request: InsightsRequest,
-    token: str = Depends(verify_token),
     ratelimit: dict = Depends(RateLimiter(times=10, seconds=60) if RATE_LIMITER_AVAILABLE else lambda: {})
 ):
     """
@@ -221,7 +208,6 @@ async def analyze_website(
 @app.post("/api/query", response_model=QueryResponse)
 async def query_website(
     request: QueryRequest,
-    token: str = Depends(verify_token),
     ratelimit: dict = Depends(RateLimiter(times=20, seconds=60) if RATE_LIMITER_AVAILABLE else lambda: {})
 ):
     """
@@ -401,7 +387,6 @@ print(f"Live mode: {LIVE_MODE}")
 print(f"Environment variables:")
 print(f"  - OPENAI_API_KEY: {'✓' if os.getenv('OPENAI_API_KEY') else '✗'}")
 print(f"  - POSTGRES_URL: {'✓' if os.getenv('POSTGRES_URL') else '✗'}")
-print(f"  - API_SECRET_KEY: {'✓' if os.getenv('API_SECRET_KEY') else '✗'}")
 print(f"  - PORT: {os.getenv('PORT', 'not set')}")
 
 # Railway deployment entry point (only for local testing)

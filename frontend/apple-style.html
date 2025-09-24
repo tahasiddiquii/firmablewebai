@@ -644,9 +644,6 @@
     </div>
 
     <script>
-        // API Token Configuration
-        // In production, this should be set via environment variable or user input
-        window.API_TOKEN = window.API_TOKEN || prompt('Enter your API token:') || 'your-api-token-here';
         
         // Global variables
         let currentUrl = '';
@@ -699,8 +696,7 @@
                 const response = await fetch(`${API_BASE_URL}/insights`, {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': 'Bearer ' + (window.API_TOKEN || 'your-api-token-here')
+                        'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({ url: url })
                 });
@@ -794,8 +790,7 @@
                 const response = await fetch(`${API_BASE_URL}/query`, {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': 'Bearer ' + (window.API_TOKEN || 'your-api-token-here')
+                        'Content-Type': 'application/json'
                     },
                     body: JSON.stringify({
                         url: currentUrl,
