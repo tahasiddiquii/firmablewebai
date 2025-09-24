@@ -692,6 +692,19 @@
             await analyzeWebsite(url);
         });
 
+        // Direct analyze button click handler (backup)
+        analyzeButton.addEventListener('click', async (e) => {
+            e.preventDefault();
+            const url = urlInput.value.trim();
+            
+            if (!url) {
+                alert('Please enter a valid website URL');
+                return;
+            }
+
+            await analyzeWebsite(url);
+        });
+
         // Chat functionality
         chatButton.addEventListener('click', showChat);
         sendButton.addEventListener('click', sendMessage);
@@ -703,7 +716,8 @@
 
         async function analyzeWebsite(url) {
             try {
-                // Clear previous analysis and chat when starting new analysis
+                // Always clear previous analysis and chat when analyze button is clicked
+                console.log('Clearing previous analysis and chat...');
                 clearPreviousAnalysis();
                 
                 // Update UI for loading state
@@ -733,6 +747,8 @@
         }
 
         function clearPreviousAnalysis() {
+            console.log('Clearing previous analysis and chat...');
+            
             // Clear previous analysis results
             insightsGrid.innerHTML = '';
             
@@ -752,15 +768,18 @@
                 </div>
             `;
             
-            // Reset conversation history
+            // Reset conversation history completely
             conversationHistory = [];
+            console.log('Conversation history cleared');
             
             // Clear any typing indicators
             hideTypingIndicator();
             
-            // Reset chat input
+            // Reset chat input and button states
             chatInput.value = '';
             sendButton.disabled = false;
+            
+            console.log('Previous analysis and chat cleared successfully');
         }
 
         function setLoadingState(loading) {
