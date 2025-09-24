@@ -75,7 +75,10 @@ async def startup():
 async def shutdown():
     """Cleanup on shutdown"""
     if RATE_LIMITER_AVAILABLE:
-        await FastAPILimiter.close()
+        try:
+            await FastAPILimiter.close()
+        except Exception as e:
+            print(f"Rate limiter cleanup failed: {e}")
 
 # Pydantic models
 class InsightsRequest(BaseModel):
@@ -193,7 +196,7 @@ async def health():
 async def analyze_website(
     request: InsightsRequest,
     token: str = Depends(verify_token),
-    ratelimit: dict = Depends(RateLimiter(times=10, seconds=60)) if RATE_LIMITER_AVAILABLE else None
+    ratelimit: dict = Depends(RateLimiter(times=10, seconds=60) if RATE_LIMITER_AVAILABLE else lambda: {})
 ):
     """
     Analyze a website and extract business insights.
@@ -219,7 +222,7 @@ async def analyze_website(
 async def query_website(
     request: QueryRequest,
     token: str = Depends(verify_token),
-    ratelimit: dict = Depends(RateLimiter(times=20, seconds=60)) if RATE_LIMITER_AVAILABLE else None
+    ratelimit: dict = Depends(RateLimiter(times=20, seconds=60) if RATE_LIMITER_AVAILABLE else lambda: {})
 ):
     """
     Ask questions about a previously analyzed website using RAG.

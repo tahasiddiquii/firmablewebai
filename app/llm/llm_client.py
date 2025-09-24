@@ -29,7 +29,7 @@ class LLMClient:
             self.client = None
             self.embedding_model = None
             self.available = False
-            print("LLMClient initialized in demo mode (no OpenAI API key or OpenAI not available)")
+            print("LLMClient initialized without OpenAI API key - service unavailable")
     
     async def generate_insights(self, scraped_content: ScrapedContent, questions: Optional[List[str]] = None) -> Dict[str, Any]:
         """Generate structured business insights using GPT-4.1"""
