@@ -248,14 +248,41 @@ class SimpleScraperRunner:
         # Extract contact info from clean visible text
         content['contact_info'] = self._extract_contact_info_from_text(content['visible_text'])
         
-        # Add social media links from contact info extraction
+        # Add social media links and enhance contact info extraction
         social_links = []
         for link in soup.find_all('a', href=True):
             href = link['href']
-            if any(social in href.lower() for social in ['facebook', 'twitter', 'linkedin', 'instagram', 'youtube']):
+            if any(social in href.lower() for social in ['facebook', 'twitter', 'linkedin', 'instagram', 'youtube', 'tiktok', 'github']):
                 social_links.append(href)
         if social_links:
-            content['contact_info']['social_links'] = social_links[:5]  # Limit to 5
+            content['contact_info']['social_media'] = social_links[:5]  # Limit to 5
+        
+        # Enhance email extraction - also look for mailto links
+        mailto_emails = []
+        for link in soup.find_all('a', href=True):
+            href = link['href']
+            if href.startswith('mailto:'):
+                email = href.replace('mailto:', '').split('?')[0]  # Remove query params
+                if '@' in email:
+                    mailto_emails.append(email)
+        
+        if mailto_emails:
+            existing_emails = content['contact_info'].get('emails', [])
+            all_emails = list(set(existing_emails + mailto_emails))  # Combine and deduplicate
+            content['contact_info']['emails'] = all_emails[:5]  # Limit to 5
+        
+        # Look for phone numbers in tel: links
+        tel_phones = []
+        for link in soup.find_all('a', href=True):
+            href = link['href']
+            if href.startswith('tel:'):
+                phone = href.replace('tel:', '').strip()
+                tel_phones.append(phone)
+        
+        if tel_phones:
+            existing_phones = content['contact_info'].get('phones', [])
+            all_phones = list(set(existing_phones + tel_phones))  # Combine and deduplicate
+            content['contact_info']['phones'] = all_phones[:5]  # Limit to 5
         
         # Remove duplicates and limit sizes
         content['headings'] = list(dict.fromkeys(content['headings']))[:15]  # Remove duplicates, limit to 15

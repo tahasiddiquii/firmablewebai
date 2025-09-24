@@ -52,23 +52,47 @@ class LLMClient:
         if questions:
             questions_text = f"\n\nAdditional Questions: {', '.join(questions)}"
         
-        prompt = f"""You are an AI business analyst. Based on the following homepage text, extract structured insights:
+        prompt = f"""You are an expert business analyst specializing in company profiling. Analyze the following homepage content and extract comprehensive business insights.
 
 Homepage Content: {content_text}{questions_text}
 
-Output JSON with these exact keys and types:
-- industry: string (required, never null)
-- company_size: string or null
-- location: string or null  
-- USP: string or null
-- products: array of strings (product names only, not objects)
-- target_audience: string or null
-- contact_info: object or empty object
+ANALYSIS REQUIREMENTS:
 
-IMPORTANT: 
-- products must be an array of simple strings, not objects
-- industry must always be a string, never null
-- Return only valid JSON, no additional text or markdown formatting."""
+**Industry**: Determine the primary industry/sector. Use inference and context clues if not explicitly stated. Consider business model, products, services, and terminology used.
+
+**Company Size**: Infer company size from indicators like:
+- Employee count mentions, team size, office locations
+- Scale of operations, client base, market presence
+- Use categories: "Startup (1-10)", "Small (11-50)", "Medium (51-200)", "Large (201-1000)", "Enterprise (1000+)"
+
+**Location**: Extract headquarters or primary business location. Look for addresses, "based in", office locations, contact addresses.
+
+**USP (Unique Selling Proposition)**: Summarize what makes this company unique. Look for:
+- Key differentiators, competitive advantages
+- Unique features, proprietary technology, special approaches
+- Value propositions, mission statements, "why choose us" content
+
+**Products/Services**: List main offerings as simple product/service names. Focus on core business offerings, not features.
+
+**Target Audience**: Infer primary customer demographic from:
+- Language tone, imagery descriptions, use cases mentioned
+- Pricing tiers, client testimonials, case studies
+- Industry focus, problem statements addressed
+
+**Contact Info**: Extract visible contact details (emails, phones, social media handles).
+
+OUTPUT FORMAT - Return ONLY valid JSON:
+{{
+  "industry": "specific industry name (required, never null)",
+  "company_size": "size category or null if unclear",
+  "location": "city, state/country or null if not found",
+  "USP": "concise unique value proposition summary or null",
+  "products": ["product1", "service1", "offering1"],
+  "target_audience": "primary customer demographic description or null",
+  "contact_info": {{"emails": [], "phones": [], "social_media": []}}
+}}
+
+Be thorough in your analysis and use business intelligence to infer details that may not be explicitly stated."""
 
         try:
             response = await self.client.chat.completions.create(
@@ -110,6 +134,19 @@ IMPORTANT:
                 industry = "Business Services"
                 print(f"⚠️ Industry was None/empty, set to fallback: {industry}")
             
+            # Clean and structure contact info properly
+            contact_info = insights.get("contact_info") or {}
+            if not isinstance(contact_info, dict):
+                contact_info = {}
+            
+            # Ensure contact_info has proper structure
+            if 'emails' not in contact_info:
+                contact_info['emails'] = []
+            if 'phones' not in contact_info:
+                contact_info['phones'] = []
+            if 'social_media' not in contact_info:
+                contact_info['social_media'] = []
+            
             cleaned_insights = {
                 "industry": industry,
                 "company_size": insights.get("company_size"),
@@ -117,7 +154,7 @@ IMPORTANT:
                 "USP": insights.get("USP"),
                 "products": products,
                 "target_audience": insights.get("target_audience"),
-                "contact_info": insights.get("contact_info") or {}
+                "contact_info": contact_info
             }
             
             print(f"✅ Cleaned insights: {cleaned_insights}")
