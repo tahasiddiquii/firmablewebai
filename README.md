@@ -1,14 +1,12 @@
-# 🤖 FirmableWebAI
+# FirmableWebAI
 
 **AI-powered backend for extracting business insights from website homepages with RAG-based conversational follow-up.**
 
-[![Deploy on Railway](https://railway.app/button.svg)](https://railway.app)
-
-## 🚀 Live Demo
+## Live Demo
 
 **Production API**: https://firmablewebai-production.up.railway.app
 
-## 📋 Table of Contents
+## Table of Contents
 
 - [Overview](#overview)
 - [Architecture](#architecture)
@@ -23,7 +21,7 @@
 - [Testing](#testing)
 - [Development](#development)
 
-## 🎯 Overview
+## Overview
 
 FirmableWebAI is a production-ready FastAPI backend that:
 
@@ -33,7 +31,7 @@ FirmableWebAI is a production-ready FastAPI backend that:
 4. **Validates** all inputs/outputs with Pydantic
 5. **Secures** endpoints with Bearer token authentication
 
-## 🏗️ Architecture
+## Architecture
 
 ### System Architecture Diagram
 
@@ -149,18 +147,18 @@ FirmableWebAI is a production-ready FastAPI backend that:
 | **Database** | Persistent storage & vector search | PostgreSQL + pgvector |
 | **Cache** | Rate limiting & sessions | Redis (optional) |
 
-## ✨ Features
+## Features
 
-- 🔍 **Smart Homepage Scraping** - Extracts title, meta, headings, content, products, contact info
-- 🧠 **AI Business Analysis** - Industry, company size, USP, target audience extraction
-- 💬 **RAG Conversations** - Ask follow-up questions about analyzed websites
-- 🔄 **Fresh Start Analysis** - Automatically clears previous analysis and chat when analyzing new websites
-- 🔐 **Bearer Token Auth** - Secure API access with configurable keys
-- 🚦 **Rate Limiting** - Hybrid Redis/in-memory rate limiting to prevent abuse
-- 📊 **Structured Responses** - Pydantic-validated JSON outputs
-- 🚀 **Production Ready** - Deployed on Railway with full error handling
+- **Smart Homepage Scraping** - Extracts title, meta, headings, content, products, contact info
+- **AI Business Analysis** - Industry, company size, USP, target audience extraction
+- **RAG Conversations** - Ask follow-up questions about analyzed websites
+- **Fresh Start Analysis** - Automatically clears previous analysis and chat when analyzing new websites
+- **Bearer Token Auth** - Secure API access with configurable keys
+- **Rate Limiting** - Hybrid Redis/in-memory rate limiting to prevent abuse
+- **Structured Responses** - Pydantic-validated JSON outputs
+- **Production Ready** - Deployed on Railway with full error handling
 
-## 🛠️ Technology Stack & Justifications
+## Technology Stack & Justifications
 
 ### Core Framework
 | Technology | Version | Justification |
@@ -279,7 +277,7 @@ Serves the web interface for testing the API.
 
 ---
 
-## 🔐 Protected Endpoints
+## Protected Endpoints
 
 ### 4. Website Insights Analysis
 **POST** `/api/insights`
@@ -295,28 +293,30 @@ Content-Type: application/json
 **Request Body:**
 ```json
 {
-  "url": "https://spillmate.ai",
-  "questions": ["What is their pricing model?", "Who are their competitors?"]
+  "url": "https://manavrachna.edu.in/",
+  "questions": ["What programs do they offer?", "What are their admission requirements?"]
 }
 ```
 
 **Response:**
 ```json
 {
-  "industry": "Mental Health Tech",
-  "company_size": "Startup (1-10)",
-  "location": null,
-  "USP": "AI-driven cognitive behavioral therapy with 24/7 availability",
+  "industry": "Education",
+  "company_size": "Large Institution (1000+)",
+  "location": "Faridabad, Haryana, India",
+  "USP": "Comprehensive educational ecosystem with multiple institutions offering diverse programs from engineering to healthcare",
   "products": [
-    "Mindful Start",
-    "Thrive Plus", 
-    "Empower Network"
+    "Undergraduate Programs",
+    "Postgraduate Programs", 
+    "Doctoral Programs",
+    "Online Programs",
+    "International Collaborations"
   ],
-  "target_audience": "young adults, students, and professionals seeking stress management",
+  "target_audience": "students seeking higher education, professionals looking for skill development, international students",
   "contact_info": {
-    "emails": [],
-    "phones": [],
-    "social_media": []
+    "emails": ["info@manavrachna.edu.in"],
+    "phones": ["+91-129-4198000", "+91-129-4268500"],
+    "social_media": ["Facebook", "Twitter", "YouTube", "Instagram", "LinkedIn"]
   }
 }
 ```
@@ -335,8 +335,8 @@ Content-Type: application/json
 **Request Body:**
 ```json
 {
-  "url": "https://spillmate.ai",
-  "query": "What does this company do?",
+  "url": "https://manavrachna.edu.in/",
+  "query": "What does this educational institution offer?",
   "conversation_history": []
 }
 ```
@@ -344,19 +344,19 @@ Content-Type: application/json
 **Response:**
 ```json
 {
-  "answer": "Spillmate is an AI-driven mental health companion that offers personalized support through a chatbot...",
+  "answer": "Manav Rachna Educational Institutions is a comprehensive educational ecosystem offering diverse programs across multiple institutions including engineering, management, healthcare, and international collaborations...",
   "source_chunks": [
-    "TITLE: Spillmate - Your AI Mental Health Companion...",
-    "HERO: Mental Health AI Chatbot..."
+    "TITLE: Manav Rachna Educational Institutions - MREI...",
+    "HERO: Manav Rachna International Institute Of Research And Studies..."
   ],
   "conversation_history": [
     {
       "role": "user",
-      "content": "What does this company do?"
+      "content": "What does this educational institution offer?"
     },
     {
       "role": "assistant", 
-      "content": "Spillmate is an AI-driven mental health companion..."
+      "content": "Manav Rachna Educational Institutions is a comprehensive educational ecosystem offering diverse programs across multiple institutions including engineering, management, healthcare, and international collaborations..."
     }
   ]
 }
@@ -410,7 +410,7 @@ curl -X GET "https://firmablewebai-production.up.railway.app/api/auth/test" \
 curl -X POST "https://firmablewebai-production.up.railway.app/api/insights" \
   -H "Authorization: Bearer VRbGm0B4GUpgYnJQaaa84qzuAX3OJk0LYtbd4xlDlQQ" \
   -H "Content-Type: application/json" \
-  -d '{"url": "https://spillmate.ai"}'
+  -d '{"url": "https://manavrachna.edu.in/"}'
 ```
 **Expected:** 200 OK with business insights JSON
 
@@ -420,8 +420,8 @@ curl -X POST "https://firmablewebai-production.up.railway.app/api/query" \
   -H "Authorization: Bearer VRbGm0B4GUpgYnJQaaa84qzuAX3OJk0LYtbd4xlDlQQ" \
   -H "Content-Type: application/json" \
   -d '{
-    "url": "https://spillmate.ai",
-    "query": "What does this company do?",
+    "url": "https://manavrachna.edu.in/",
+    "query": "What does this educational institution offer?",
     "conversation_history": []
   }'
 ```
@@ -431,7 +431,7 @@ curl -X POST "https://firmablewebai-production.up.railway.app/api/query" \
 ```bash
 curl -X POST "https://firmablewebai-production.up.railway.app/api/insights" \
   -H "Content-Type: application/json" \
-  -d '{"url": "https://spillmate.ai"}'
+  -d '{"url": "https://manavrachna.edu.in/"}'
 ```
 **Expected:** 401 Unauthorized
 
@@ -440,13 +440,13 @@ curl -X POST "https://firmablewebai-production.up.railway.app/api/insights" \
 curl -X POST "https://firmablewebai-production.up.railway.app/api/insights" \
   -H "Authorization: Bearer invalid-token-123" \
   -H "Content-Type: application/json" \
-  -d '{"url": "https://spillmate.ai"}'
+  -d '{"url": "https://manavrachna.edu.in/"}'
 ```
 **Expected:** 401 Unauthorized
 
 ### Test Websites
 Use these URLs for testing different scenarios:
-- `https://spillmate.ai` - Mental Health Tech startup
+- `https://manavrachna.edu.in/` - Educational Institution (Manav Rachna)
 - `https://stripe.com` - Fintech company  
 - `https://openai.com` - AI company
 - `https://shopify.com` - E-commerce platform
@@ -459,7 +459,7 @@ Use these URLs for testing different scenarios:
 
 ---
 
-## 🔐 Authentication
+## Authentication
 
 ### Bearer Token Format
 ```
@@ -489,7 +489,7 @@ VRbGm0B4GUpgYnJQaaa84qzuAX3OJk0LYtbd4xlDlQQ
 
 ---
 
-## 🚦 Rate Limiting
+## Rate Limiting
 
 ### Overview
 The API implements hybrid rate limiting to prevent abuse and ensure fair usage:
@@ -527,7 +527,7 @@ python3 test_rate_limiting.py https://firmablewebai-production.up.railway.app
 
 ---
 
-## 🛠 Installation
+## Installation
 
 ### Prerequisites
 - Python 3.9+
@@ -725,7 +725,7 @@ Tests use mocking to avoid external dependencies:
 
 ---
 
-## 📊 API Response Schemas
+## API Response Schemas
 
 ### InsightsResponse
 ```typescript
@@ -758,7 +758,7 @@ Tests use mocking to avoid external dependencies:
 
 ---
 
-## 🚀 Deployment
+## Deployment
 
 ### Railway (Recommended)
 1. Fork this repository
@@ -779,7 +779,7 @@ docker run -p 8080:8080 firmablewebai
 
 ---
 
-## 📈 Performance
+## Performance
 
 - **Scraping**: 2-5 seconds per website
 - **AI Analysis**: 10-20 seconds with GPT-4.1
@@ -862,36 +862,36 @@ python3 main.py
 
 ---
 
-## 🔄 Changelog
+## Changelog
 
 ### v1.0.3 (Latest)
-- ✅ Added comprehensive test suite with 100+ test cases
-- ✅ Unit tests for all core modules (scraper, LLM, database, API)
-- ✅ Integration tests for full application flow
-- ✅ Test coverage reporting and CI/CD support
-- ✅ Test runner script with multiple suite options
+- Added comprehensive test suite with 100+ test cases
+- Unit tests for all core modules (scraper, LLM, database, API)
+- Integration tests for full application flow
+- Test coverage reporting and CI/CD support
+- Test runner script with multiple suite options
 
 ### v1.0.2
-- ✅ Added comprehensive system architecture diagram
-- ✅ Added technology stack justifications
-- ✅ Added IDE and development environment documentation
-- ✅ Enhanced README with complete technical documentation
+- Added comprehensive system architecture diagram
+- Added technology stack justifications
+- Added IDE and development environment documentation
+- Enhanced README with complete technical documentation
 
 ### v1.0.1
-- ✅ Hybrid rate limiting (Redis + in-memory fallback)
-- ✅ Per-endpoint configurable rate limits
-- ✅ Rate limit testing suite
+- Hybrid rate limiting (Redis + in-memory fallback)
+- Per-endpoint configurable rate limits
+- Rate limit testing suite
 
 ### v1.0.0
-- ✅ Bearer token authentication
-- ✅ Homepage scraping with BeautifulSoup
-- ✅ GPT-4.1 business insights extraction
-- ✅ RAG-based conversational queries
-- ✅ PostgreSQL + pgvector integration
-- ✅ Production deployment on Railway
-- ✅ Comprehensive test suite
-- ✅ Web interface for manual testing
+- Bearer token authentication
+- Homepage scraping with BeautifulSoup
+- GPT-4.1 business insights extraction
+- RAG-based conversational queries
+- PostgreSQL + pgvector integration
+- Production deployment on Railway
+- Comprehensive test suite
+- Web interface for manual testing
 
 ---
 
-**🎯 Ready for production use with full authentication and AI-powered business intelligence!**
+**Ready for production use with full authentication and AI-powered business intelligence!**
