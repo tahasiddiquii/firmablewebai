@@ -110,12 +110,14 @@ try:
     LIVE_MODE = bool(os.getenv("OPENAI_API_KEY"))
     print(f"Live components imported successfully. Live mode: {LIVE_MODE}")
 except ImportError as e:
-    print(f"Import error (running in demo mode): {e}")
+    print(f"Critical import error - service unavailable: {e}")
     LIVE_MODE = False
 
 def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
     """Verify Bearer token"""
-    expected_token = os.getenv("API_SECRET_KEY", "demo-token-123")
+    expected_token = os.getenv("API_SECRET_KEY")
+    if not expected_token:
+        raise HTTPException(status_code=500, detail="API_SECRET_KEY environment variable not configured")
     if credentials.credentials != expected_token:
         raise HTTPException(status_code=401, detail="Invalid authentication token")
     return credentials.credentials
@@ -162,7 +164,7 @@ async def api_info():
         "message": "FirmableWebAI API",
         "version": "1.0.0",
         "status": "healthy",
-        "mode": "live" if LIVE_MODE else "demo",
+        "mode": "live" if LIVE_MODE else "unavailable",
         "docs": "/docs",
         "endpoints": {
             "insights": "/api/insights",
@@ -176,13 +178,13 @@ async def api_info():
 async def health():
     """Health check endpoint"""
     return {
-        "status": "healthy",
+        "status": "healthy" if LIVE_MODE else "degraded",
         "service": "firmablewebai",
-        "mode": "live" if LIVE_MODE else "demo",
+        "mode": "live" if LIVE_MODE else "unavailable",
         "environment_variables": {
             "OPENAI_API_KEY": "✓" if os.getenv("OPENAI_API_KEY") else "✗",
             "POSTGRES_URL": "✓" if os.getenv("POSTGRES_URL") else "✗",
-            "API_SECRET_KEY": "✓" if os.getenv("API_SECRET_KEY") else "✗ (using demo)"
+            "API_SECRET_KEY": "✓" if os.getenv("API_SECRET_KEY") else "✗"
         }
     }
 
@@ -191,7 +193,7 @@ async def health():
 async def analyze_website(
     request: InsightsRequest,
     token: str = Depends(verify_token),
-    ratelimit: dict = Depends(RateLimiter(times=10, seconds=60))
+    ratelimit: dict = Depends(RateLimiter(times=10, seconds=60)) if RATE_LIMITER_AVAILABLE else None
 ):
     """
     Analyze a website and extract business insights.
@@ -200,32 +202,24 @@ async def analyze_website(
     - **questions**: Optional list of specific questions to answer
     """
     try:
-        if LIVE_MODE:
-            response = await process_live_insights(str(request.url), request.questions or [])
-        else:
-            response = process_demo_insights(str(request.url), request.questions or [])
+        if not LIVE_MODE:
+            raise HTTPException(status_code=503, detail="Service not available - OpenAI API key not configured")
         
+        response = await process_live_insights(str(request.url), request.questions or [])
         return InsightsResponse(**response)
         
+    except HTTPException:
+        raise
     except Exception as e:
         print(f"Error processing insights request: {e}")
-        # Return error response in expected format
-        return InsightsResponse(
-            industry="Unknown",
-            company_size=None,
-            location=None,
-            USP=None,
-            products=[],
-            target_audience=None,
-            contact_info={"error": str(e)}
-        )
+        raise HTTPException(status_code=500, detail=f"Failed to analyze website: {str(e)}")
 
 # RAG Query endpoint
 @app.post("/api/query", response_model=QueryResponse)
 async def query_website(
     request: QueryRequest,
     token: str = Depends(verify_token),
-    ratelimit: dict = Depends(RateLimiter(times=20, seconds=60))
+    ratelimit: dict = Depends(RateLimiter(times=20, seconds=60)) if RATE_LIMITER_AVAILABLE else None
 ):
     """
     Ask questions about a previously analyzed website using RAG.
@@ -235,28 +229,21 @@ async def query_website(
     - **conversation_history**: Previous conversation context
     """
     try:
-        if LIVE_MODE:
-            response = await process_live_query(
-                str(request.url), 
-                request.query, 
-                request.conversation_history
-            )
-        else:
-            response = process_demo_query(
-                str(request.url), 
-                request.query, 
-                request.conversation_history
-            )
+        if not LIVE_MODE:
+            raise HTTPException(status_code=503, detail="Service not available - OpenAI API key not configured")
         
+        response = await process_live_query(
+            str(request.url), 
+            request.query, 
+            request.conversation_history
+        )
         return QueryResponse(**response)
         
+    except HTTPException:
+        raise
     except Exception as e:
         print(f"Error processing query request: {e}")
-        return QueryResponse(
-            answer=f"Sorry, I encountered an error: {str(e)}",
-            source_chunks=[],
-            conversation_history=request.conversation_history
-        )
+        raise HTTPException(status_code=500, detail=f"Failed to process query: {str(e)}")
 
 # Live mode functions (only called if LIVE_MODE is True)
 async def process_live_insights(url: str, questions: list):
@@ -318,9 +305,7 @@ async def process_live_insights(url: str, questions: list):
         
     except Exception as e:
         print(f"❌ Live mode error: {e}")
-        print("🔄 Falling back to demo mode")
-        # Fallback to demo mode on error
-        return process_demo_insights(url, questions)
+        raise Exception(f"Insights processing failed: {e}")
 
 async def process_live_query(url: str, query: str, conversation_history: list):
     """Process query with real RAG system (database optional)"""
@@ -405,84 +390,7 @@ async def process_live_query(url: str, query: str, conversation_history: list):
         
     except Exception as e:
         print(f"❌ Live query error: {e}")
-        print("🔄 Falling back to demo mode")
-        # Fallback to demo mode on error
-        return process_demo_query(url, query, conversation_history)
-
-# Demo mode functions
-def process_demo_insights(url: str, questions: list):
-    """Process request with demo data"""
-    domain = urlparse(url).netloc.lower()
-    
-    # Customize demo response based on domain
-    if 'openai' in domain:
-        return {
-            "industry": "Artificial Intelligence",
-            "company_size": "Large Enterprise",
-            "location": "San Francisco, CA",
-            "USP": "Leading AI research and deployment platform",
-            "products": ["ChatGPT", "GPT-4", "OpenAI API", "DALL-E", "Codex"],
-            "target_audience": "Developers, businesses, researchers",
-            "contact_info": {
-                "emails": ["support@openai.com"],
-                "website": url
-            }
-        }
-    elif 'google' in domain:
-        return {
-            "industry": "Technology",
-            "company_size": "Large Enterprise",
-            "location": "Mountain View, CA",
-            "USP": "Search and cloud computing leader",
-            "products": ["Google Search", "Google Cloud", "Gmail", "YouTube"],
-            "target_audience": "Global consumers and businesses",
-            "contact_info": {
-                "emails": ["support@google.com"],
-                "website": url
-            }
-        }
-    else:
-        return {
-            "industry": "Technology",
-            "company_size": "Medium Business",
-            "location": "United States",
-            "USP": "Innovative solutions for modern challenges",
-            "products": ["Web Platform", "API Services", "Analytics Tools"],
-            "target_audience": "Businesses and developers",
-            "contact_info": {
-                "emails": ["contact@example.com"],
-                "website": url
-            }
-        }
-
-def process_demo_query(url: str, query: str, conversation_history: list):
-    """Process query with demo responses"""
-    domain = urlparse(url).netloc.lower()
-    
-    # Generate contextual demo response
-    if 'pricing' in query.lower() or 'cost' in query.lower():
-        answer = f"Based on the website {url}, I can see they offer various pricing tiers. This is a demo response - in live mode, I would analyze the actual pricing page content to give you specific details."
-    elif 'product' in query.lower() or 'service' in query.lower():
-        answer = f"The website {url} offers several products and services. This is a demo response showing the RAG system functionality. In live mode, I would retrieve actual content chunks about their offerings."
-    elif 'contact' in query.lower():
-        answer = f"For contact information about {url}, this demo shows how I would normally extract and present contact details from the website content using the RAG system."
-    else:
-        answer = f"Based on the website {url}, I can help answer your question: '{query}'. This is a demo response showing that the RAG conversation system is working. In live mode, I would analyze the actual website content and provide contextual answers."
-    
-    # Update conversation history
-    updated_history = conversation_history.copy()
-    updated_history.append({"role": "user", "content": query})
-    updated_history.append({"role": "assistant", "content": answer})
-    
-    return {
-        "answer": answer,
-        "source_chunks": [
-            f"Demo content chunk 1 from {domain}",
-            f"Demo product information from {domain}",
-            f"Demo contact details from {domain} footer"
-        ],
-        "conversation_history": updated_history
-    }
+        raise Exception(f"Query processing failed: {e}")
 
 # Startup logging - this will show in Railway logs
 print(f"FirmableWebAI starting up...")
@@ -490,7 +398,7 @@ print(f"Live mode: {LIVE_MODE}")
 print(f"Environment variables:")
 print(f"  - OPENAI_API_KEY: {'✓' if os.getenv('OPENAI_API_KEY') else '✗'}")
 print(f"  - POSTGRES_URL: {'✓' if os.getenv('POSTGRES_URL') else '✗'}")
-print(f"  - API_SECRET_KEY: {'✓' if os.getenv('API_SECRET_KEY') else '✗ (using demo)'}")
+print(f"  - API_SECRET_KEY: {'✓' if os.getenv('API_SECRET_KEY') else '✗'}")
 print(f"  - PORT: {os.getenv('PORT', 'not set')}")
 
 # Railway deployment entry point (only for local testing)

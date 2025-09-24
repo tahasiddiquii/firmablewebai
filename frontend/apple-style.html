@@ -644,6 +644,10 @@
     </div>
 
     <script>
+        // API Token Configuration
+        // In production, this should be set via environment variable or user input
+        window.API_TOKEN = window.API_TOKEN || prompt('Enter your API token:') || 'your-api-token-here';
+        
         // Global variables
         let currentUrl = '';
         let conversationHistory = [];
@@ -696,7 +700,7 @@
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': 'Bearer y7H9r!Pz3qT8mLw#Xv2Bf@Kc5jS1dG6n'
+                        'Authorization': 'Bearer ' + (window.API_TOKEN || 'your-api-token-here')
                     },
                     body: JSON.stringify({ url: url })
                 });
@@ -791,7 +795,7 @@
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
-                        'Authorization': 'Bearer y7H9r!Pz3qT8mLw#Xv2Bf@Kc5jS1dG6n'
+                        'Authorization': 'Bearer ' + (window.API_TOKEN || 'your-api-token-here')
                     },
                     body: JSON.stringify({
                         url: currentUrl,
