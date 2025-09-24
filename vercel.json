@@ -4,30 +4,17 @@
     "api/*.py": {
       "runtime": "@vercel/python",
       "memory": 1024,
-      "maxDuration": 60,
-      "excludeFiles": [
-        ".venv/**",
-        ".vercel/cache/**",
-        "tests/**",
-        "docs/**",
-        "frontend/**",
-        "public/**",
-        "__pycache__/**",
-        "*.pyc",
-        ".pytest_cache/**",
-        ".git/**"
-      ]
+      "maxDuration": 60
     }
   },
   "routes": [
     {
-      "src": "/(.*)",
-      "dest": "/public/$1"
-    },
-    {
       "src": "/api/(.*)",
       "dest": "/api/$1"
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/public/$1"
     }
-  ],
-  "outputDirectory": "public"
+  ]
 }
