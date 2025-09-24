@@ -447,9 +447,8 @@ curl -X POST "https://firmablewebai-production.up.railway.app/api/insights" \
 ### Test Websites
 Use these URLs for testing different scenarios:
 - `https://manavrachna.edu.in/` - Educational Institution (Manav Rachna)
-- `https://stripe.com` - Fintech company  
-- `https://openai.com` - AI company
-- `https://shopify.com` - E-commerce platform
+- `http://firmable.com` - B2B Sales Intelligence Platform
+- `https://www.airbnb.co.in/` - Hospitality & Travel Platform
 
 ### Expected Response Times
 - Health check: < 1 second
