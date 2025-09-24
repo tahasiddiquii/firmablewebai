@@ -94,9 +94,12 @@ class PostgresClient:
             
             # Insert new chunks
             for chunk_text, embedding in zip(chunks, embeddings):
+                # Convert embedding list to numpy array for pgvector
+                import numpy as np
+                embedding_array = np.array(embedding, dtype=np.float32)
                 await conn.execute(
                     "INSERT INTO website_chunks (website_id, chunk_text, embedding) VALUES ($1, $2, $3)",
-                    website_id, chunk_text, embedding
+                    website_id, chunk_text, embedding_array
                 )
     
     async def search_similar_chunks(self, query_embedding: List[float], website_id: int, limit: int = 5) -> List[str]:

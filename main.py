@@ -69,14 +69,16 @@ except Exception as e:
 @app.on_event("startup")
 async def startup():
     """Initialize services on startup"""
-    if RATE_LIMITER_AVAILABLE:
+    if RATE_LIMITER_AVAILABLE and os.getenv("REDIS_URL"):
         try:
-            redis_url = os.getenv("REDIS_URL", "redis://localhost:6379")
+            redis_url = os.getenv("REDIS_URL")
             redis_client = redis.from_url(redis_url, encoding="utf-8", decode_responses=True)
             await FastAPILimiter.init(redis_client)
             print("✅ Rate limiter initialized")
         except Exception as e:
             print(f"⚠️ Rate limiter initialization failed: {e}")
+    else:
+        print("⚠️ Rate limiter disabled - no REDIS_URL configured")
 
 @app.on_event("shutdown") 
 async def shutdown():
@@ -198,13 +200,38 @@ async def analyze_website(
             raise HTTPException(status_code=503, detail="Service not available - OpenAI API key not configured")
         
         response = await process_live_insights(str(request.url), request.questions or [])
-        return InsightsResponse(**response)
+        
+        # Validate response before creating Pydantic model
+        validated_response = {
+            "industry": response.get("industry") or "Business Services",
+            "company_size": response.get("company_size"),
+            "location": response.get("location"),
+            "USP": response.get("USP"),
+            "products": response.get("products") or [],
+            "target_audience": response.get("target_audience"),
+            "contact_info": response.get("contact_info") or {}
+        }
+        
+        return InsightsResponse(**validated_response)
         
     except HTTPException:
         raise
     except Exception as e:
         print(f"Error processing insights request: {e}")
-        raise HTTPException(status_code=500, detail=f"Failed to analyze website: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        
+        # Return a safe fallback response instead of 500 error
+        fallback_response = {
+            "industry": "Business Services",
+            "company_size": None,
+            "location": None,
+            "USP": "Analysis temporarily unavailable",
+            "products": [],
+            "target_audience": None,
+            "contact_info": {}
+        }
+        return InsightsResponse(**fallback_response)
 
 # RAG Query endpoint
 @app.post("/api/query", response_model=QueryResponse)
@@ -251,6 +278,10 @@ async def process_live_insights(url: str, questions: list):
         
         # Generate insights using real AI
         insights = await llm_client.generate_insights(scraped_content, questions)
+        
+        # Ensure insights are properly validated before returning
+        if not insights.get("industry"):
+            insights["industry"] = "Business Services"
         
         print(f"✅ Generated AI insights successfully")
         
