@@ -84,18 +84,30 @@ Return only valid JSON, no additional text."""
             
             # Parse JSON response
             insights = json.loads(content)
-            return insights
+            
+            # Validate and clean insights to ensure no None values for required fields
+            cleaned_insights = {
+                "industry": insights.get("industry") or "Business Services",
+                "company_size": insights.get("company_size"),
+                "location": insights.get("location"),
+                "USP": insights.get("USP"),
+                "products": insights.get("products") or [],
+                "target_audience": insights.get("target_audience"),
+                "contact_info": insights.get("contact_info") or {}
+            }
+            
+            return cleaned_insights
             
         except Exception as e:
             print(f"Error generating insights: {e}")
             print(f"Raw response content: {content if 'content' in locals() else 'No content received'}")
             return {
-                "industry": "Unknown",
-                "company_size": None,
-                "location": None,
-                "USP": None,
+                "industry": "Business Services",
+                "company_size": "Not specified",
+                "location": "Not specified",
+                "USP": "Not specified",
                 "products": [],
-                "target_audience": None,
+                "target_audience": "Not specified",
                 "contact_info": {}
             }
     
