@@ -37,6 +37,24 @@ class LLMClient:
         if not self.available:
             raise Exception("OpenAI client not available - missing API key")
         
+        # Extract location hints from content
+        location_hints = []
+        raw_text_lower = (scraped_content.raw_text or "").lower()
+        title_lower = (scraped_content.title or "").lower()
+        meta_lower = (scraped_content.meta_description or "").lower()
+        
+        # Check for geographic indicators
+        if "australia" in raw_text_lower or "australian" in raw_text_lower or "& nz" in raw_text_lower:
+            location_hints.append("Geographic focus: Australia/New Zealand")
+        if "uk" in raw_text_lower or "united kingdom" in raw_text_lower or "british" in raw_text_lower:
+            location_hints.append("Geographic focus: United Kingdom")
+        if "usa" in raw_text_lower or "united states" in raw_text_lower or "american" in raw_text_lower:
+            location_hints.append("Geographic focus: United States")
+        if "canada" in raw_text_lower or "canadian" in raw_text_lower:
+            location_hints.append("Geographic focus: Canada")
+        
+        location_hint_text = f"\nLocation Clues: {'; '.join(location_hints)}" if location_hints else ""
+        
         # Prepare content for analysis
         content_text = f"""
         Title: {scraped_content.title or 'N/A'}
@@ -45,7 +63,7 @@ class LLMClient:
         Main Content: {scraped_content.main_content or 'N/A'}
         Hero Section: {scraped_content.hero_section or 'N/A'}
         Products: {', '.join(scraped_content.products)}
-        Contact Info: {scraped_content.contact_info}
+        Contact Info: {scraped_content.contact_info}{location_hint_text}
         """
         
         questions_text = ""
@@ -65,7 +83,11 @@ ANALYSIS REQUIREMENTS:
 - Scale of operations, client base, market presence
 - Use categories: "Startup (1-10)", "Small (11-50)", "Medium (51-200)", "Large (201-1000)", "Enterprise (1000+)"
 
-**Location**: Extract headquarters or primary business location. Look for addresses, "based in", office locations, contact addresses.
+**Location**: Extract headquarters or primary business location. Look for:
+- Physical addresses, "based in", "located in", office locations, contact addresses
+- Market focus indicators like "serving Australia", "Australian market", "UK-based"
+- Domain extensions (.com.au = Australia, .co.uk = UK, .ca = Canada)
+- Geographic terms in title/description (e.g., "Australia & NZ", "European", "US market")
 
 **USP (Unique Selling Proposition)**: Summarize what makes this company unique. Look for:
 - Key differentiators, competitive advantages
