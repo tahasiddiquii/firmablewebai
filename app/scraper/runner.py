@@ -315,12 +315,25 @@ class SimpleScraperRunner:
             except:
                 pass
         
+        # If we have very little content, add more from visible text
+        preliminary_text = ' || '.join(content_parts)
+        if len(preliminary_text) < 200 and content['visible_text']:
+            print(f"⚠️ Low content ({len(preliminary_text)} chars), adding more from visible text")
+            # Add more content from visible text
+            additional_text = content['visible_text'][:2000]
+            content_parts.append(f"ADDITIONAL: {additional_text}")
+        
         final_text = ' || '.join(content_parts)
+        
+        # Ensure minimum content length for better AI analysis
+        if len(final_text) < 100:
+            print(f"⚠️ Very low content ({len(final_text)} chars), this may cause AI issues")
         
         # Final safety limit - never exceed 5000 characters
         if len(final_text) > 5000:
             final_text = final_text[:5000] + "..."
         
+        print(f"📊 Generated focused text: {len(final_text)} characters")
         return final_text
     
     async def scrape_website(self, url: str) -> ScrapedContent:

@@ -94,6 +94,7 @@ IMPORTANT:
             
             # Parse JSON response
             insights = json.loads(content)
+            print(f"🔍 Raw LLM response parsed: {insights}")
             
             # Validate and clean insights to ensure proper types
             products = insights.get("products") or []
@@ -103,8 +104,14 @@ IMPORTANT:
             elif products and not all(isinstance(p, str) for p in products):
                 products = [str(p) for p in products]
             
+            # Ensure industry is never None or empty
+            industry = insights.get("industry")
+            if not industry or industry.strip() == "":
+                industry = "Business Services"
+                print(f"⚠️ Industry was None/empty, set to fallback: {industry}")
+            
             cleaned_insights = {
-                "industry": insights.get("industry") or "Business Services",
+                "industry": industry,
                 "company_size": insights.get("company_size"),
                 "location": insights.get("location"),
                 "USP": insights.get("USP"),
@@ -113,6 +120,7 @@ IMPORTANT:
                 "contact_info": insights.get("contact_info") or {}
             }
             
+            print(f"✅ Cleaned insights: {cleaned_insights}")
             return cleaned_insights
             
         except Exception as e:

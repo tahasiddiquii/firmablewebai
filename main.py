@@ -279,11 +279,23 @@ async def process_live_insights(url: str, questions: list):
         # Generate insights using real AI
         insights = await llm_client.generate_insights(scraped_content, questions)
         
-        # Ensure insights are properly validated before returning
-        if not insights.get("industry"):
-            insights["industry"] = "Business Services"
+        # Double-check validation before proceeding
+        print(f"🔍 Insights received in main: {insights}")
         
-        print(f"✅ Generated AI insights successfully")
+        # Ensure all required fields are properly set
+        if not insights.get("industry") or insights.get("industry") == "":
+            insights["industry"] = "Business Services"
+            print(f"⚠️ Main validation: Fixed empty industry field")
+        
+        if not isinstance(insights.get("products"), list):
+            insights["products"] = []
+            print(f"⚠️ Main validation: Fixed products field")
+        
+        if not isinstance(insights.get("contact_info"), dict):
+            insights["contact_info"] = {}
+            print(f"⚠️ Main validation: Fixed contact_info field")
+        
+        print(f"✅ Generated AI insights successfully: {insights.get('industry')}")
         
         # Try to save to database if available (optional)
         chunks_created = 0
