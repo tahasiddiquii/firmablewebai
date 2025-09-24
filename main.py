@@ -14,6 +14,16 @@ import uvicorn
 from pydantic import BaseModel, HttpUrl
 from urllib.parse import urlparse
 
+# Load environment variables from .env file
+try:
+    from dotenv import load_dotenv
+    load_dotenv()
+    print("✅ Environment variables loaded from .env file")
+except ImportError:
+    print("⚠️ python-dotenv not installed. Run: pip install python-dotenv")
+except Exception as e:
+    print(f"⚠️ Could not load .env file: {e}")
+
 # Add the project root to the path
 sys.path.append(os.path.dirname(__file__))
 

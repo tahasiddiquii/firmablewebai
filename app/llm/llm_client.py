@@ -72,12 +72,23 @@ Return only valid JSON, no additional text."""
             )
             
             content = response.choices[0].message.content.strip()
+            
+            # Clean the content to extract just the JSON
+            if content.startswith('```json'):
+                content = content[7:]
+            if content.startswith('```'):
+                content = content[3:]
+            if content.endswith('```'):
+                content = content[:-3]
+            content = content.strip()
+            
             # Parse JSON response
             insights = json.loads(content)
             return insights
             
         except Exception as e:
             print(f"Error generating insights: {e}")
+            print(f"Raw response content: {content if 'content' in locals() else 'No content received'}")
             return {
                 "industry": "Unknown",
                 "company_size": None,

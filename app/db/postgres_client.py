@@ -78,9 +78,10 @@ class PostgresClient:
     async def save_insights(self, website_id: int, insights: Dict[str, Any]):
         """Save insights to website record"""
         async with self.connection_pool.acquire() as conn:
+            import json
             await conn.execute(
                 "UPDATE websites SET insights = $1 WHERE id = $2",
-                insights, website_id
+                json.dumps(insights), website_id
             )
     
     async def save_chunks(self, website_id: int, chunks: List[str], embeddings: List[List[float]]):

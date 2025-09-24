@@ -706,6 +706,7 @@
                 }
 
                 const insights = await response.json();
+                console.log('Received insights:', insights);
                 displayResults(insights);
                 
             } catch (error) {
@@ -729,6 +730,7 @@
         }
 
         function displayResults(insights) {
+            console.log('Displaying results:', insights);
             // Show results section
             resultsSection.style.display = 'block';
             resultsSection.scrollIntoView({ behavior: 'smooth' });
