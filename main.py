@@ -119,15 +119,8 @@ except ImportError as e:
 async def root():
     """Root endpoint - serve Apple-style frontend HTML"""
     try:
-        # Try to serve the new Apple-style frontend first
-        if os.path.exists("frontend/apple-style.html"):
-            with open("frontend/apple-style.html", "r") as f:
-                return HTMLResponse(content=f.read())
-        # Fallback to other frontend files
-        elif os.path.exists("public/index.html"):
-            with open("public/index.html", "r") as f:
-                return HTMLResponse(content=f.read())
-        elif os.path.exists("frontend/index.html"):
+        # Serve the frontend
+        if os.path.exists("frontend/index.html"):
             with open("frontend/index.html", "r") as f:
                 return HTMLResponse(content=f.read())
         else:
