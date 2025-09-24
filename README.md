@@ -1,298 +1,475 @@
 # 🤖 FirmableWebAI
 
-AI-powered backend for extracting business insights from website homepages with RAG-based conversational follow-up.
+**AI-powered backend for extracting business insights from website homepages with RAG-based conversational follow-up.**
+
+[![Deploy on Railway](https://railway.app/button.svg)](https://railway.app)
+
+## 🚀 Live Demo
+
+**Production API**: https://firmablewebai-production.up.railway.app
+
+## 📋 Table of Contents
+
+- [Overview](#overview)
+- [Features](#features)
+- [API Documentation](#api-documentation)
+- [Quick Testing Guide](#quick-testing-guide)
+- [Authentication](#authentication)
+- [Installation](#installation)
+- [Environment Variables](#environment-variables)
+- [Testing](#testing)
+
+## 🎯 Overview
+
+FirmableWebAI is a production-ready FastAPI backend that:
+
+1. **Scrapes** homepage content from any website
+2. **Extracts** structured business insights using GPT-4.1
+3. **Provides** RAG-based conversational Q&A using GPT-4o-mini
+4. **Validates** all inputs/outputs with Pydantic
+5. **Secures** endpoints with Bearer token authentication
 
 ## ✨ Features
 
-- **🏠 Homepage Scraping**: Extract structured content from any website homepage
-- **🧠 AI-Powered Insights**: Generate business insights using GPT-4.1
-- **💬 Conversational Q&A**: RAG-based follow-up questions using GPT-4o-mini
-- **🔍 Vector Search**: Semantic search using pgvector and text-embedding-3-large
-- **🛡️ Security**: Bearer token authentication and rate limiting
-- **⚡ Async**: Fully asynchronous, production-ready architecture
-- **🚂 Railway Ready**: Deployable on Railway with persistent connections
+- 🔍 **Smart Homepage Scraping** - Extracts title, meta, headings, content, products, contact info
+- 🧠 **AI Business Analysis** - Industry, company size, USP, target audience extraction
+- 💬 **RAG Conversations** - Ask follow-up questions about analyzed websites
+- 🔐 **Bearer Token Auth** - Secure API access with configurable keys
+- 📊 **Structured Responses** - Pydantic-validated JSON outputs
+- 🚀 **Production Ready** - Deployed on Railway with full error handling
 
-## 🏗️ Architecture
+## 📡 API Documentation
 
+### Base URL
 ```
-User → Frontend → FastAPI App → Scrapy Spider → LLMs & Embeddings → pgvector → RAG → Response
+https://firmablewebai-production.up.railway.app
 ```
 
-### Components
-
-- **Frontend Skeleton**: Lightweight HTML/JS interface for demonstration
-- **FastAPI Backend**: Async Python web framework with Pydantic validation
-- **Scrapy Spider**: Homepage-only content extraction
-- **LLM Integration**: GPT-4.1 for insights, GPT-4o-mini for RAG
-- **Vector Store**: pgvector for semantic search
-- **Database**: PostgreSQL with pgvector extension
-
-## 🚀 Quick Start
-
-### Prerequisites
-
-- Python 3.9+
-- PostgreSQL with pgvector extension
-- OpenAI API key
-- Redis (optional, for rate limiting)
-
-### Installation
-
-1. **Clone the repository**
-   ```bash
-   git clone https://github.com/yourusername/firmablewebai.git
-   cd firmablewebai
-   ```
-
-2. **Install dependencies**
-   ```bash
-   pip install -r requirements.txt
-   ```
-
-3. **Set up environment variables**
-   ```bash
-   cp env.example .env
-   # Edit .env with your configuration
-   ```
-
-4. **Configure database**
-   ```sql
-   -- Enable pgvector extension
-   CREATE EXTENSION IF NOT EXISTS vector;
-   ```
-
-5. **Run the application**
-   ```bash
-   python main.py
-   ```
-
-6. **Run tests** (optional)
-   ```bash
-   pytest
-   ```
-
-### Local Development
-
-1. **Start the unified FastAPI application**
-   ```bash
-   python main.py
-   ```
-   
-   This starts the server on `http://localhost:8000` with:
-   - API endpoints at `/api/*`
-   - Frontend served from root `/`
-   - Interactive docs at `/docs`
-
-2. **Test the API**
-   ```bash
-   # Health check
-   curl http://localhost:8000/api/health
-   
-   # Website analysis (demo mode)
-   curl -X POST http://localhost:8000/api/insights \
-     -H "Content-Type: application/json" \
-     -H "Authorization: Bearer demo-token-123" \
-     -d '{"url": "https://openai.com"}'
-   ```
-
-## 📡 API Endpoints
-
-### `/api/insights` (POST)
-
-Analyze a website and extract business insights.
-
-**Request:**
-```json
-{
-  "url": "https://example.com",
-  "questions": ["What is their main product?", "Who is their target audience?"]
-}
+### Authentication
+All protected endpoints require Bearer token authentication:
 ```
+Authorization: Bearer VRbGm0B4GUpgYnJQaaa84qzuAX3OJk0LYtbd4xlDlQQ
+```
+
+---
+
+## 🔓 Public Endpoints
+
+### 1. Health Check
+**GET** `/api/health`
+
+Check service status and environment configuration.
 
 **Response:**
 ```json
 {
-  "industry": "Technology",
-  "company_size": "Small",
-  "location": "San Francisco",
-  "USP": "Innovative solutions",
-  "products": ["Product A", "Product B"],
-  "target_audience": "Small businesses",
-  "contact_info": {
-    "emails": ["contact@example.com"],
-    "phones": ["+1-555-0123"]
+  "status": "healthy",
+  "service": "firmablewebai",
+  "mode": "live",
+  "environment_variables": {
+    "OPENAI_API_KEY": "✓",
+    "POSTGRES_URL": "✓",
+    "API_SECRET_KEY": "✓"
   }
 }
 ```
 
-### `/api/query` (POST)
+### 2. API Information
+**GET** `/api/info`
 
-Ask questions about a previously analyzed website.
+Get API version and endpoint information.
 
-**Request:**
+**Response:**
 ```json
 {
-  "url": "https://example.com",
-  "query": "What services do they offer?",
-  "conversation_history": [
-    {"role": "user", "content": "Previous question"},
-    {"role": "assistant", "content": "Previous answer"}
-  ]
+  "message": "FirmableWebAI API",
+  "version": "1.0.0",
+  "endpoints": {
+    "insights": "/api/insights",
+    "query": "/api/query",
+    "health": "/api/health"
+  }
+}
+```
+
+### 3. Frontend
+**GET** `/`
+
+Serves the web interface for testing the API.
+
+---
+
+## 🔐 Protected Endpoints
+
+### 4. Website Insights Analysis
+**POST** `/api/insights`
+
+Analyze a website and extract structured business insights.
+
+**Headers:**
+```
+Authorization: Bearer VRbGm0B4GUpgYnJQaaa84qzuAX3OJk0LYtbd4xlDlQQ
+Content-Type: application/json
+```
+
+**Request Body:**
+```json
+{
+  "url": "https://spillmate.ai",
+  "questions": ["What is their pricing model?", "Who are their competitors?"]
 }
 ```
 
 **Response:**
 ```json
 {
-  "answer": "Based on the website content, they offer...",
-  "source_chunks": ["Relevant content chunk 1", "Relevant content chunk 2"],
+  "industry": "Mental Health Tech",
+  "company_size": "Startup (1-10)",
+  "location": null,
+  "USP": "AI-driven cognitive behavioral therapy with 24/7 availability",
+  "products": [
+    "Mindful Start",
+    "Thrive Plus", 
+    "Empower Network"
+  ],
+  "target_audience": "young adults, students, and professionals seeking stress management",
+  "contact_info": {
+    "emails": [],
+    "phones": [],
+    "social_media": []
+  }
+}
+```
+
+### 5. RAG Query
+**POST** `/api/query`
+
+Ask questions about a previously analyzed website using RAG.
+
+**Headers:**
+```
+Authorization: Bearer VRbGm0B4GUpgYnJQaaa84qzuAX3OJk0LYtbd4xlDlQQ
+Content-Type: application/json
+```
+
+**Request Body:**
+```json
+{
+  "url": "https://spillmate.ai",
+  "query": "What does this company do?",
+  "conversation_history": []
+}
+```
+
+**Response:**
+```json
+{
+  "answer": "Spillmate is an AI-driven mental health companion that offers personalized support through a chatbot...",
+  "source_chunks": [
+    "TITLE: Spillmate - Your AI Mental Health Companion...",
+    "HERO: Mental Health AI Chatbot..."
+  ],
   "conversation_history": [
-    {"role": "user", "content": "Previous question"},
-    {"role": "assistant", "content": "Previous answer"},
-    {"role": "user", "content": "What services do they offer?"},
-    {"role": "assistant", "content": "Based on the website content, they offer..."}
+    {
+      "role": "user",
+      "content": "What does this company do?"
+    },
+    {
+      "role": "assistant", 
+      "content": "Spillmate is an AI-driven mental health companion..."
+    }
   ]
 }
 ```
 
-## 🔧 Configuration
+### 6. Authentication Test
+**GET** `/api/auth/test`
 
-### Environment Variables
+Test Bearer token authentication.
 
-| Variable | Description | Required |
-|----------|-------------|----------|
-| `OPENAI_API_KEY` | OpenAI API key for GPT models | Yes |
-| `POSTGRES_URL` | PostgreSQL connection string with pgvector | Yes |
-| `API_SECRET_KEY` | Secret key for Bearer token authentication | Yes |
-| `REDIS_URL` | Redis connection string (optional) | No |
-
-### Database Schema
-
-```sql
-CREATE TABLE websites (
-    id SERIAL PRIMARY KEY,
-    url TEXT UNIQUE NOT NULL,
-    insights JSONB,
-    created_at TIMESTAMP DEFAULT NOW()
-);
-
-CREATE TABLE website_chunks (
-    id SERIAL PRIMARY KEY,
-    website_id INT REFERENCES websites(id) ON DELETE CASCADE,
-    chunk_text TEXT,
-    embedding VECTOR(3072)
-);
+**Headers:**
+```
+Authorization: Bearer VRbGm0B4GUpgYnJQaaa84qzuAX3OJk0LYtbd4xlDlQQ
 ```
 
-## 🧪 Testing
-
-The project includes comprehensive tests using pytest:
-
-```bash
-# Run all tests
-pytest
-
-# Run specific test files
-pytest tests/test_scraper.py
-pytest tests/test_llm_client.py
-pytest tests/test_endpoints.py
-
-# Run with coverage
-pytest --cov=app --cov=api --cov=models
+**Response:**
+```json
+{
+  "message": "Authentication successful!",
+  "authenticated": true,
+  "api_key_configured": true
+}
 ```
-
-### Test Categories
-
-- **Unit Tests**: Individual component testing
-- **Integration Tests**: API endpoint testing
-- **Async Tests**: Asynchronous operation testing
-
-## 🚀 Deployment
-
-### Railway Deployment
-
-1. **Create Railway Project**
-   - Go to [Railway.app](https://railway.app)
-   - Sign up with GitHub
-   - Create new project from your GitHub repository
-
-2. **Configure Environment Variables**
-   ```bash
-   OPENAI_API_KEY=sk-your-actual-openai-key-here
-   POSTGRES_URL=postgresql://user:password@host:5432/database
-   API_SECRET_KEY=y7H9r!Pz3qT8mLw#Xv2Bf@Kc5jS1dG6n
-   ```
-
-3. **Deploy**
-   - Railway automatically deploys on push
-   - View logs and manage from Railway dashboard
-
-For detailed deployment instructions, see [RAILWAY_DEPLOYMENT.md](RAILWAY_DEPLOYMENT.md)
-
-### Environment Setup
-
-- **OpenAI API**: Get your API key from [OpenAI Platform](https://platform.openai.com/)
-- **PostgreSQL**: Use Railway PostgreSQL plugin or [Supabase](https://supabase.com/) with pgvector
-- **Redis**: Optional, for rate limiting
-
-## 📁 Project Structure
-
-```
-firmablewebai/
-├── main.py                 # Unified FastAPI application
-├── api/                    # Legacy API files (for reference)
-├── app/                    # Core application logic
-│   ├── db/                 # Database client
-│   ├── llm/               # LLM integration
-│   └── scraper/           # Web scraping
-├── models/                 # Pydantic models
-├── frontend/              # Demo frontend
-├── public/                # Static files served by FastAPI
-├── tests/                  # Test suite
-├── requirements.txt        # Dependencies
-├── Procfile               # Railway process definition
-├── railway.toml           # Railway configuration
-├── nixpacks.toml          # Build configuration
-├── test_railway.py        # Railway deployment testing
-├── RAILWAY_DEPLOYMENT.md  # Deployment guide
-└── README.md              # This file
-```
-
-## 🔒 Security
-
-- **Authentication**: Bearer token required for all endpoints
-- **Rate Limiting**: Configurable rate limits per endpoint
-- **Input Validation**: Pydantic models validate all inputs
-- **Error Handling**: Graceful error handling and logging
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Make your changes
-4. Add tests for new functionality
-5. Run the test suite
-6. Submit a pull request
-
-## 📄 License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## 🆘 Support
-
-- **Documentation**: Check this README and inline code comments
-- **Issues**: Report bugs and feature requests on GitHub
-- **Discussions**: Join the community discussions
-
-## 🎯 Roadmap
-
-- [ ] Enhanced scraping capabilities
-- [ ] Multi-language support
-- [ ] Advanced analytics dashboard
-- [ ] API rate limiting improvements
-- [ ] Caching layer implementation
-- [ ] Webhook support for real-time updates
 
 ---
 
-**Built with ❤️ using FastAPI, Scrapy, OpenAI, and pgvector**
+## 🧪 Quick Testing Guide
+
+### For API Testers
+
+**Base URL:** `https://firmablewebai-production.up.railway.app`
+**API Key:** `VRbGm0B4GUpgYnJQaaa84qzuAX3OJk0LYtbd4xlDlQQ`
+
+### Test Sequence
+
+#### 1. **Health Check** (No Auth)
+```bash
+curl -X GET "https://firmablewebai-production.up.railway.app/api/health"
+```
+**Expected:** 200 OK with status info
+
+#### 2. **Authentication Test**
+```bash
+curl -X GET "https://firmablewebai-production.up.railway.app/api/auth/test" \
+  -H "Authorization: Bearer VRbGm0B4GUpgYnJQaaa84qzuAX3OJk0LYtbd4xlDlQQ"
+```
+**Expected:** 200 OK with authentication success
+
+#### 3. **Website Analysis**
+```bash
+curl -X POST "https://firmablewebai-production.up.railway.app/api/insights" \
+  -H "Authorization: Bearer VRbGm0B4GUpgYnJQaaa84qzuAX3OJk0LYtbd4xlDlQQ" \
+  -H "Content-Type: application/json" \
+  -d '{"url": "https://spillmate.ai"}'
+```
+**Expected:** 200 OK with business insights JSON
+
+#### 4. **RAG Query**
+```bash
+curl -X POST "https://firmablewebai-production.up.railway.app/api/query" \
+  -H "Authorization: Bearer VRbGm0B4GUpgYnJQaaa84qzuAX3OJk0LYtbd4xlDlQQ" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "url": "https://spillmate.ai",
+    "query": "What does this company do?",
+    "conversation_history": []
+  }'
+```
+**Expected:** 200 OK with conversational answer + source chunks
+
+#### 5. **Authentication Failure** (No Token)
+```bash
+curl -X POST "https://firmablewebai-production.up.railway.app/api/insights" \
+  -H "Content-Type: application/json" \
+  -d '{"url": "https://spillmate.ai"}'
+```
+**Expected:** 401 Unauthorized
+
+#### 6. **Authentication Failure** (Invalid Token)
+```bash
+curl -X POST "https://firmablewebai-production.up.railway.app/api/insights" \
+  -H "Authorization: Bearer invalid-token-123" \
+  -H "Content-Type: application/json" \
+  -d '{"url": "https://spillmate.ai"}'
+```
+**Expected:** 401 Unauthorized
+
+### Test Websites
+Use these URLs for testing different scenarios:
+- `https://spillmate.ai` - Mental Health Tech startup
+- `https://stripe.com` - Fintech company  
+- `https://openai.com` - AI company
+- `https://shopify.com` - E-commerce platform
+
+### Expected Response Times
+- Health check: < 1 second
+- Authentication: < 1 second  
+- Insights analysis: 15-30 seconds (includes scraping + AI processing)
+- RAG query: 5-10 seconds
+
+---
+
+## 🔐 Authentication
+
+### Bearer Token Format
+```
+Authorization: Bearer <API_KEY>
+```
+
+### Current API Key
+```
+VRbGm0B4GUpgYnJQaaa84qzuAX3OJk0LYtbd4xlDlQQ
+```
+
+### Error Responses
+
+**Missing Authorization:**
+```json
+{
+  "detail": "Authorization header required. Use: Authorization: Bearer <your-api-key>"
+}
+```
+
+**Invalid Token:**
+```json
+{
+  "detail": "Invalid API key. Check your Authorization header."
+}
+```
+
+---
+
+## 🛠 Installation
+
+### Prerequisites
+- Python 3.9+
+- OpenAI API key
+- PostgreSQL with pgvector (optional)
+
+### Local Setup
+```bash
+# Clone repository
+git clone https://github.com/tahasiddiquii/firmablewebai.git
+cd firmablewebai
+
+# Install dependencies
+pip install -r requirements.txt
+
+# Set environment variables
+cp env.example .env
+# Edit .env with your keys
+
+# Run server
+python main.py
+```
+
+### Docker Setup
+```bash
+# Build image
+docker build -t firmablewebai .
+
+# Run container
+docker run -p 8080:8080 --env-file .env firmablewebai
+```
+
+---
+
+## 🌍 Environment Variables
+
+### Required
+```bash
+OPENAI_API_KEY=sk-proj-your-openai-key-here
+API_SECRET_KEY=your-secure-api-key-here
+```
+
+### Optional
+```bash
+POSTGRES_URL=postgresql://user:pass@host:port/db
+REDIS_URL=redis://localhost:6379
+ENVIRONMENT=production
+```
+
+---
+
+## 🧪 Testing
+
+### Automated Tests
+```bash
+# Run authentication tests
+API_SECRET_KEY="your-key" python test_authentication.py https://firmablewebai-production.up.railway.app
+
+# Run RAG flow test  
+API_SECRET_KEY="your-key" python debug_rag_flow.py https://firmablewebai-production.up.railway.app https://spillmate.ai
+
+# Run deployment tests
+API_SECRET_KEY="your-key" python test_railway_deployment.py https://firmablewebai-production.up.railway.app
+```
+
+### Manual Testing
+Visit the web interface: https://firmablewebai-production.up.railway.app
+
+---
+
+## 📊 API Response Schemas
+
+### InsightsResponse
+```typescript
+{
+  industry: string;           // Required: Business industry
+  company_size?: string;      // Optional: Company size category  
+  location?: string;          // Optional: Headquarters location
+  USP?: string;              // Optional: Unique selling proposition
+  products?: string[];        // Optional: List of products/services
+  target_audience?: string;   // Optional: Target customer demographic
+  contact_info?: {           // Optional: Contact information
+    emails: string[];
+    phones: string[];
+    social_media: string[];
+  };
+}
+```
+
+### QueryResponse
+```typescript
+{
+  answer: string;                    // AI-generated answer
+  source_chunks: string[];           // Retrieved content chunks
+  conversation_history: Array<{      // Updated conversation
+    role: "user" | "assistant";
+    content: string;
+  }>;
+}
+```
+
+---
+
+## 🚀 Deployment
+
+### Railway (Recommended)
+1. Fork this repository
+2. Connect to Railway
+3. Set environment variables in Railway dashboard
+4. Deploy automatically
+
+### Vercel
+```bash
+vercel --prod
+```
+
+### Docker
+```bash
+docker build -t firmablewebai .
+docker run -p 8080:8080 firmablewebai
+```
+
+---
+
+## 📈 Performance
+
+- **Scraping**: 2-5 seconds per website
+- **AI Analysis**: 10-20 seconds with GPT-4.1
+- **RAG Query**: 3-8 seconds with GPT-4o-mini
+- **Database**: PostgreSQL with pgvector for embeddings
+- **Rate Limiting**: 10 requests/minute per API key
+
+---
+
+## 🤝 Support
+
+- **Issues**: [GitHub Issues](https://github.com/tahasiddiquii/firmablewebai/issues)
+- **Documentation**: This README
+- **Testing**: Use provided test scripts
+
+---
+
+## 📄 License
+
+MIT License - see LICENSE file for details.
+
+---
+
+## 🔄 Changelog
+
+### v1.0.0 (Latest)
+- ✅ Bearer token authentication
+- ✅ Homepage scraping with BeautifulSoup
+- ✅ GPT-4.1 business insights extraction
+- ✅ RAG-based conversational queries
+- ✅ PostgreSQL + pgvector integration
+- ✅ Production deployment on Railway
+- ✅ Comprehensive test suite
+- ✅ Web interface for manual testing
+
+---
+
+**🎯 Ready for production use with full authentication and AI-powered business intelligence!**

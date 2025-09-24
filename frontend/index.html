@@ -650,11 +650,10 @@
         let conversationHistory = [];
         const API_BASE_URL = '/api';
         
-        // Get API key from environment or use demo key for development
+        // Get API key from environment or use production key
         function getApiKey() {
-            // In production, this would come from user input or secure storage
-            // For now, we'll use the same demo key as the backend default
-            return 'demo-secret-key-for-development';
+            // Use the production API key that matches Railway deployment
+            return 'VRbGm0B4GUpgYnJQaaa84qzuAX3OJk0LYtbd4xlDlQQ';
         }
         
         // Get authorization headers
