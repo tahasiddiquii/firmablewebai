@@ -91,16 +91,19 @@ def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
         raise HTTPException(status_code=401, detail="Invalid authentication token")
     return credentials.credentials
 
-# Root endpoint - serve the frontend
+# Root endpoint - serve the Apple-style frontend
 @app.get("/", response_class=HTMLResponse)
 async def root():
-    """Root endpoint - serve frontend HTML"""
+    """Root endpoint - serve Apple-style frontend HTML"""
     try:
-        # Try to serve from public directory first
-        if os.path.exists("public/index.html"):
+        # Try to serve the new Apple-style frontend first
+        if os.path.exists("frontend/apple-style.html"):
+            with open("frontend/apple-style.html", "r") as f:
+                return HTMLResponse(content=f.read())
+        # Fallback to other frontend files
+        elif os.path.exists("public/index.html"):
             with open("public/index.html", "r") as f:
                 return HTMLResponse(content=f.read())
-        # Fallback to frontend directory
         elif os.path.exists("frontend/index.html"):
             with open("frontend/index.html", "r") as f:
                 return HTMLResponse(content=f.read())
@@ -108,19 +111,19 @@ async def root():
             # If no frontend files found, return API info
             return HTMLResponse(content="""
             <html>
-                <body>
+                <body style="font-family: -apple-system, BlinkMacSystemFont, sans-serif; padding: 40px; text-align: center; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; min-height: 100vh;">
                     <h1>FirmableWebAI API</h1>
                     <p>Version: 1.0.0</p>
                     <p>Status: Healthy</p>
                     <p>Mode: """ + ("Live" if LIVE_MODE else "Demo") + """</p>
-                    <p><a href="/docs">Interactive API Documentation</a></p>
-                    <p><a href="/api/health">Health Check</a></p>
+                    <p><a href="/docs" style="color: white;">Interactive API Documentation</a></p>
+                    <p><a href="/api/health" style="color: white;">Health Check</a></p>
                 </body>
             </html>
             """)
     except Exception as e:
         print(f"Error serving frontend: {e}")
-        return HTMLResponse(content=f"<html><body><h1>FirmableWebAI API</h1><p>Frontend loading error: {str(e)}</p><p><a href='/docs'>API Docs</a></p></body></html>")
+        return HTMLResponse(content=f"<html><body style='font-family: -apple-system, BlinkMacSystemFont, sans-serif; padding: 40px; text-align: center;'><h1>FirmableWebAI API</h1><p>Frontend loading error: {str(e)}</p><p><a href='/docs'>API Docs</a></p></body></html>")
 
 # API info endpoint
 @app.get("/api/info")
