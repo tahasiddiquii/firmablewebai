@@ -183,7 +183,6 @@ async def health():
 @app.post("/api/insights", response_model=InsightsResponse)
 async def analyze_website(
     request: InsightsRequest,
-    ratelimit: dict = Depends(RateLimiter(times=10, seconds=60) if RATE_LIMITER_AVAILABLE else lambda: {})
 ):
     """
     Analyze a website and extract business insights.
@@ -208,7 +207,6 @@ async def analyze_website(
 @app.post("/api/query", response_model=QueryResponse)
 async def query_website(
     request: QueryRequest,
-    ratelimit: dict = Depends(RateLimiter(times=20, seconds=60) if RATE_LIMITER_AVAILABLE else lambda: {})
 ):
     """
     Ask questions about a previously analyzed website using RAG.
