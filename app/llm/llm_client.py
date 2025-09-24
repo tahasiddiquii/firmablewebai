@@ -1,17 +1,41 @@
 import os
 import json
 from typing import List, Dict, Any, Optional
-from openai import AsyncOpenAI
-from models.pydantic_models import ScrapedContent
+
+# Import models with graceful fallback
+try:
+    from models.pydantic_models import ScrapedContent
+except ImportError:
+    ScrapedContent = None
+
+# Import OpenAI with graceful fallback
+try:
+    from openai import AsyncOpenAI
+    OPENAI_AVAILABLE = True
+except ImportError:
+    AsyncOpenAI = None
+    OPENAI_AVAILABLE = False
 
 
 class LLMClient:
     def __init__(self):
-        self.client = AsyncOpenAI(api_key=os.getenv("OPENAI_API_KEY"))
-        self.embedding_model = "text-embedding-3-large"
+        # Only initialize OpenAI client if API key is available
+        api_key = os.getenv("OPENAI_API_KEY")
+        if api_key and OPENAI_AVAILABLE:
+            self.client = AsyncOpenAI(api_key=api_key)
+            self.embedding_model = "text-embedding-3-large"
+            self.available = True
+        else:
+            self.client = None
+            self.embedding_model = None
+            self.available = False
+            print("LLMClient initialized in demo mode (no OpenAI API key or OpenAI not available)")
     
     async def generate_insights(self, scraped_content: ScrapedContent, questions: Optional[List[str]] = None) -> Dict[str, Any]:
         """Generate structured business insights using GPT-4.1"""
+        
+        if not self.available:
+            raise Exception("OpenAI client not available - missing API key")
         
         # Prepare content for analysis
         content_text = f"""
@@ -66,6 +90,10 @@ Return only valid JSON, no additional text."""
     
     async def generate_embedding(self, text: str) -> List[float]:
         """Generate embedding for text using text-embedding-3-large"""
+        
+        if not self.available:
+            return []
+        
         try:
             response = await self.client.embeddings.create(
                 model=self.embedding_model,
@@ -78,6 +106,9 @@ Return only valid JSON, no additional text."""
     
     async def generate_rag_response(self, query: str, retrieved_chunks: List[str], conversation_history: List[Dict[str, str]]) -> str:
         """Generate RAG response using GPT-4o-mini"""
+        
+        if not self.available:
+            return "RAG response not available - OpenAI client not initialized"
         
         # Format conversation history
         history_text = ""
