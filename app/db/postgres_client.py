@@ -3,7 +3,14 @@ import os
 from typing import List, Optional, Dict, Any
 import asyncpg
 import numpy as np
-from models.pydantic_models import WebsiteChunk, ScrapedContent
+
+# Import models only if available (graceful fallback for build)
+try:
+    from models.pydantic_models import WebsiteChunk, ScrapedContent
+except ImportError:
+    # Define minimal types for build compatibility
+    WebsiteChunk = None
+    ScrapedContent = None
 
 
 class PostgresClient:

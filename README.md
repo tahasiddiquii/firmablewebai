@@ -10,12 +10,12 @@ AI-powered backend for extracting business insights from website homepages with 
 - **🔍 Vector Search**: Semantic search using pgvector and text-embedding-3-large
 - **🛡️ Security**: Bearer token authentication and rate limiting
 - **⚡ Async**: Fully asynchronous, production-ready architecture
-- **🚀 Vercel Ready**: Deployable on Vercel serverless functions
+- **🚂 Railway Ready**: Deployable on Railway with persistent connections
 
 ## 🏗️ Architecture
 
 ```
-User → Frontend → API Endpoints → Scrapy Spider → LLMs & Embeddings → pgvector → RAG → Response
+User → Frontend → FastAPI App → Scrapy Spider → LLMs & Embeddings → pgvector → RAG → Response
 ```
 
 ### Components
@@ -61,33 +61,43 @@ User → Frontend → API Endpoints → Scrapy Spider → LLMs & Embeddings → 
    CREATE EXTENSION IF NOT EXISTS vector;
    ```
 
-5. **Run tests**
+5. **Run the application**
+   ```bash
+   python main.py
+   ```
+
+6. **Run tests** (optional)
    ```bash
    pytest
    ```
 
 ### Local Development
 
-1. **Start the insights API**
+1. **Start the unified FastAPI application**
    ```bash
-   python api/website_insights.py
+   python main.py
    ```
+   
+   This starts the server on `http://localhost:8000` with:
+   - API endpoints at `/api/*`
+   - Frontend served from root `/`
+   - Interactive docs at `/docs`
 
-2. **Start the query API** (in another terminal)
+2. **Test the API**
    ```bash
-   python api/website_query.py
-   ```
-
-3. **Open the frontend**
-   ```bash
-   # Serve the frontend files
-   cd frontend
-   python -m http.server 8000
+   # Health check
+   curl http://localhost:8000/api/health
+   
+   # Website analysis (demo mode)
+   curl -X POST http://localhost:8000/api/insights \
+     -H "Content-Type: application/json" \
+     -H "Authorization: Bearer demo-token-123" \
+     -d '{"url": "https://openai.com"}'
    ```
 
 ## 📡 API Endpoints
 
-### `/website/insights` (POST)
+### `/api/insights` (POST)
 
 Analyze a website and extract business insights.
 
@@ -115,7 +125,7 @@ Analyze a website and extract business insights.
 }
 ```
 
-### `/website/query` (POST)
+### `/api/query` (POST)
 
 Ask questions about a previously analyzed website.
 
@@ -199,48 +209,52 @@ pytest --cov=app --cov=api --cov=models
 
 ## 🚀 Deployment
 
-### Vercel Deployment
+### Railway Deployment
 
-1. **Connect to Vercel**
-   ```bash
-   vercel login
-   vercel link
-   ```
+1. **Create Railway Project**
+   - Go to [Railway.app](https://railway.app)
+   - Sign up with GitHub
+   - Create new project from your GitHub repository
 
-2. **Set environment variables**
+2. **Configure Environment Variables**
    ```bash
-   vercel env add OPENAI_API_KEY
-   vercel env add POSTGRES_URL
-   vercel env add API_SECRET_KEY
+   OPENAI_API_KEY=sk-your-actual-openai-key-here
+   POSTGRES_URL=postgresql://user:password@host:5432/database
+   API_SECRET_KEY=y7H9r!Pz3qT8mLw#Xv2Bf@Kc5jS1dG6n
    ```
 
 3. **Deploy**
-   ```bash
-   vercel --prod
-   ```
+   - Railway automatically deploys on push
+   - View logs and manage from Railway dashboard
+
+For detailed deployment instructions, see [RAILWAY_DEPLOYMENT.md](RAILWAY_DEPLOYMENT.md)
 
 ### Environment Setup
 
 - **OpenAI API**: Get your API key from [OpenAI Platform](https://platform.openai.com/)
-- **PostgreSQL**: Use a service like [Neon](https://neon.tech/) or [Supabase](https://supabase.com/) with pgvector
-- **Redis**: Optional, for rate limiting (use [Upstash](https://upstash.com/) for serverless)
+- **PostgreSQL**: Use Railway PostgreSQL plugin or [Supabase](https://supabase.com/) with pgvector
+- **Redis**: Optional, for rate limiting
 
 ## 📁 Project Structure
 
 ```
 firmablewebai/
-├── api/                    # FastAPI endpoints
-│   ├── website_insights.py # Insights generation endpoint
-│   └── website_query.py    # RAG query endpoint
+├── main.py                 # Unified FastAPI application
+├── api/                    # Legacy API files (for reference)
 ├── app/                    # Core application logic
 │   ├── db/                 # Database client
 │   ├── llm/               # LLM integration
 │   └── scraper/           # Web scraping
 ├── models/                 # Pydantic models
 ├── frontend/              # Demo frontend
+├── public/                # Static files served by FastAPI
 ├── tests/                  # Test suite
 ├── requirements.txt        # Dependencies
-├── vercel.json            # Vercel configuration
+├── Procfile               # Railway process definition
+├── railway.toml           # Railway configuration
+├── nixpacks.toml          # Build configuration
+├── test_railway.py        # Railway deployment testing
+├── RAILWAY_DEPLOYMENT.md  # Deployment guide
 └── README.md              # This file
 ```
 

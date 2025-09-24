@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-Test script for FirmableWebAI deployment
+Test script for FirmableWebAI Railway deployment
 Tests both local and deployed endpoints
 """
 
@@ -11,15 +11,15 @@ import time
 from typing import Dict, Any
 
 # Configuration
-LOCAL_BASE_URL = "http://localhost:8000/api"
-DEPLOYED_BASE_URL = "https://your-app.vercel.app/api"  # Update with your actual URL
+LOCAL_BASE_URL = "http://localhost:8000"
+RAILWAY_BASE_URL = "https://your-railway-app.railway.app"  # Update with your actual Railway URL
 DEMO_TOKEN = "demo-token-123"
 TEST_URL = "https://openai.com"
 
 def test_endpoint(base_url: str, endpoint: str, method: str = "GET", 
                  data: Dict[Any, Any] = None, headers: Dict[str, str] = None) -> Dict[str, Any]:
     """Test a single endpoint"""
-    url = f"{base_url}/{endpoint}"
+    url = f"{base_url}{endpoint}"
     
     try:
         if method == "POST":
@@ -52,23 +52,18 @@ def run_tests(base_url: str, env_name: str):
     
     tests = [
         {
-            "name": "Health Check - Index",
-            "endpoint": "index/health",
+            "name": "Root Endpoint",
+            "endpoint": "/",
             "method": "GET"
         },
         {
-            "name": "Health Check - Insights",
-            "endpoint": "insights/health", 
-            "method": "GET"
-        },
-        {
-            "name": "Health Check - Query",
-            "endpoint": "query/health",
+            "name": "Health Check",
+            "endpoint": "/api/health",
             "method": "GET"
         },
         {
             "name": "Website Analysis",
-            "endpoint": "insights/",
+            "endpoint": "/api/insights",
             "method": "POST",
             "data": {
                 "url": TEST_URL,
@@ -78,7 +73,7 @@ def run_tests(base_url: str, env_name: str):
         },
         {
             "name": "RAG Query",
-            "endpoint": "query/",
+            "endpoint": "/api/query",
             "method": "POST", 
             "data": {
                 "url": TEST_URL,
@@ -121,6 +116,8 @@ def run_tests(base_url: str, env_name: str):
                         print(f"   Industry: {response['industry']}")
                     if 'answer' in response:
                         print(f"   Answer: {response['answer'][:100]}...")
+                    if 'message' in response:
+                        print(f"   Message: {response['message']}")
                 else:
                     print(f"   Response: {str(response)[:200]}...")
             else:
@@ -138,31 +135,32 @@ def run_tests(base_url: str, env_name: str):
 
 def main():
     """Main test runner"""
-    print("🚀 FirmableWebAI Deployment Test Suite")
+    print("🚂 FirmableWebAI Railway Deployment Test Suite")
     print("=" * 60)
     
     # Test local development (optional)
     if len(sys.argv) > 1 and sys.argv[1] == "--local":
         print("\n🏠 Testing Local Development Server")
-        print("Make sure you're running: uvicorn api.index:app --port 8000")
+        print("Make sure you're running: python main.py")
         time.sleep(2)
         local_results = run_tests(LOCAL_BASE_URL, "Local Development")
     
     # Test deployed version
     if len(sys.argv) > 1 and sys.argv[1].startswith("https://"):
-        deployed_url = sys.argv[1].rstrip('/') + '/api'
-        deployed_results = run_tests(deployed_url, "Deployed (Vercel)")
+        deployed_url = sys.argv[1].rstrip('/')
+        deployed_results = run_tests(deployed_url, "Deployed (Railway)")
     else:
         print(f"\n🌐 Testing Deployed Version")
-        print("Update DEPLOYED_BASE_URL in this script with your actual Vercel URL")
-        print("Or run: python test_deployment.py https://your-app.vercel.app")
-        deployed_results = run_tests(DEPLOYED_BASE_URL, "Deployed (Vercel)")
+        print("Update RAILWAY_BASE_URL in this script with your actual Railway URL")
+        print("Or run: python test_railway.py https://your-app.railway.app")
+        deployed_results = run_tests(RAILWAY_BASE_URL, "Deployed (Railway)")
     
     print(f"\n🎉 Testing Complete!")
     print("\n💡 Next Steps:")
     print("1. If demo mode works, add environment variables for live mode")
-    print("2. Set OPENAI_API_KEY and POSTGRES_URL in Vercel dashboard")
+    print("2. Set OPENAI_API_KEY and POSTGRES_URL in Railway dashboard")
     print("3. Test again to verify live AI integration")
+    print("4. Check Railway logs if any issues occur")
 
 if __name__ == "__main__":
     main()

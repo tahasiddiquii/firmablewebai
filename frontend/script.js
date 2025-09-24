@@ -31,7 +31,7 @@ async function handleAnalysis(e) {
     analysisResults.innerHTML = '';
     
     try {
-        const response = await fetch(`${API_BASE_URL}/insights/`, {
+        const response = await fetch(`${API_BASE_URL}/insights`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -75,7 +75,7 @@ async function handleQuery(e) {
     queryLoading.style.display = 'block';
     
     try {
-        const response = await fetch(`${API_BASE_URL}/query/`, {
+        const response = await fetch(`${API_BASE_URL}/query`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
