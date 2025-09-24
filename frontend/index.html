@@ -750,6 +750,26 @@
             // Clear previous results
             insightsGrid.innerHTML = '';
 
+            // Format contact info
+            const formatContactInfo = (contactInfo) => {
+                if (!contactInfo || typeof contactInfo !== 'object') {
+                    return 'Not specified';
+                }
+                
+                const parts = [];
+                if (contactInfo.emails && contactInfo.emails.length > 0) {
+                    parts.push(`📧 ${contactInfo.emails.join(', ')}`);
+                }
+                if (contactInfo.phones && contactInfo.phones.length > 0) {
+                    parts.push(`📞 ${contactInfo.phones.join(', ')}`);
+                }
+                if (contactInfo.social_media && contactInfo.social_media.length > 0) {
+                    parts.push(`🔗 ${contactInfo.social_media.join(', ')}`);
+                }
+                
+                return parts.length > 0 ? parts.join('<br>') : 'Not specified';
+            };
+
             // Create insight cards - vertical layout
             const insightCards = [
                 { title: 'Industry', content: insights.industry || 'Not specified' },
@@ -757,7 +777,8 @@
                 { title: 'Location', content: insights.location || 'Not specified' },
                 { title: 'Unique Value Proposition', content: insights.USP || 'Not specified' },
                 { title: 'Products & Services', content: Array.isArray(insights.products) ? insights.products.join(', ') : (insights.products || 'Not specified') },
-                { title: 'Target Audience', content: insights.target_audience || 'Not specified' }
+                { title: 'Target Audience', content: insights.target_audience || 'Not specified' },
+                { title: 'Contact Info', content: formatContactInfo(insights.contact_info) }
             ];
 
             insightCards.forEach((card, index) => {
