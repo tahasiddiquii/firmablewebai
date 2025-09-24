@@ -308,19 +308,33 @@ async def process_live_insights(url: str, questions: list):
                 await postgres_client.save_insights(website_id, insights)
                 
                 # Create chunks and embeddings for RAG
+                print("🔄 Creating text chunks for RAG...")
                 chunks = llm_client.chunk_text(scraped_content.raw_text)
-                embeddings = []
+                print(f"✅ Created {len(chunks)} text chunks")
                 
-                for chunk in chunks:
+                embeddings = []
+                print("🔄 Generating embeddings for chunks...")
+                
+                for i, chunk in enumerate(chunks):
+                    print(f"   Generating embedding for chunk {i+1}/{len(chunks)}")
                     embedding = await llm_client.generate_embedding(chunk)
                     if embedding:
                         embeddings.append(embedding)
+                        print(f"   ✅ Embedding {i+1}: {len(embedding)} dimensions")
+                    else:
+                        print(f"   ❌ Failed to generate embedding for chunk {i+1}")
+                
+                print(f"✅ Generated {len(embeddings)} embeddings out of {len(chunks)} chunks")
                 
                 # Save chunks to database
                 if embeddings:
-                    await postgres_client.save_chunks(website_id, chunks, embeddings)
+                    print("🔄 Saving chunks and embeddings to database...")
+                    await postgres_client.save_chunks(website_id, chunks[:len(embeddings)], embeddings)
+                    print("✅ Chunks and embeddings saved to database")
+                else:
+                    print("⚠️ No embeddings generated - skipping database save")
                 
-                chunks_created = len(chunks)
+                chunks_created = len(embeddings)
                 print(f"✅ Saved {chunks_created} chunks to database")
             else:
                 print("⚠️ Database not configured, skipping storage (analysis still works!)")
@@ -344,6 +358,7 @@ async def process_live_query(url: str, query: str, conversation_history: list):
     """Process query with real RAG system (database optional)"""
     try:
         print(f"💬 Processing query: {query}")
+        print(f"🔍 POSTGRES_URL configured: {bool(os.getenv('POSTGRES_URL'))}")
         
         # Try database-powered RAG first
         if os.getenv("POSTGRES_URL"):
@@ -351,12 +366,15 @@ async def process_live_query(url: str, query: str, conversation_history: list):
                 print("🔍 Using database RAG...")
                 # Initialize database
                 await postgres_client.initialize()
+                print("✅ Database initialized")
                 
                 # Get website ID
                 website_id = await postgres_client.get_or_create_website(url)
+                print(f"✅ Website ID: {website_id}")
                 
                 # Check if website has been analyzed
                 insights = await postgres_client.get_website_insights(website_id)
+                print(f"✅ Insights found: {bool(insights)}")
                 if not insights:
                     return {
                         "answer": "This website hasn't been analyzed yet. Please run the insights endpoint first to analyze the website content.",
@@ -365,14 +383,18 @@ async def process_live_query(url: str, query: str, conversation_history: list):
                     }
                 
                 # Generate embedding for the query
+                print("🔄 Generating query embedding...")
                 query_embedding = await llm_client.generate_embedding(query)
+                print(f"✅ Query embedding generated: {len(query_embedding) if query_embedding else 0} dimensions")
                 if not query_embedding:
                     raise Exception("Failed to generate query embedding")
                 
                 # Search for similar chunks
+                print("🔄 Searching for similar chunks...")
                 similar_chunks = await postgres_client.search_similar_chunks(
                     query_embedding, website_id, limit=5
                 )
+                print(f"✅ Found {len(similar_chunks)} similar chunks")
                 
                 if not similar_chunks:
                     return {
@@ -381,16 +403,23 @@ async def process_live_query(url: str, query: str, conversation_history: list):
                         "conversation_history": conversation_history
                     }
                 
+                # Log chunks for debugging
+                for i, chunk in enumerate(similar_chunks):
+                    print(f"📄 Chunk {i+1}: {chunk[:100]}...")
+                
                 # Generate RAG response
+                print("🔄 Generating RAG response...")
                 answer = await llm_client.generate_rag_response(
                     query, similar_chunks, conversation_history
                 )
+                print(f"✅ RAG response generated: {len(answer)} characters")
                 
                 # Update conversation history
                 updated_history = conversation_history.copy()
                 updated_history.append({"role": "user", "content": query})
                 updated_history.append({"role": "assistant", "content": answer})
                 
+                print("🎉 Full RAG response completed successfully!")
                 return {
                     "answer": answer,
                     "source_chunks": similar_chunks,
@@ -398,14 +427,15 @@ async def process_live_query(url: str, query: str, conversation_history: list):
                 }
             except Exception as db_error:
                 print(f"⚠️ Database RAG failed: {db_error}")
+                import traceback
+                traceback.print_exc()
+        else:
+            print("⚠️ No POSTGRES_URL configured, skipping database RAG")
         
         # Fallback: Simple AI response without RAG
         print("🤖 Using simple AI response (no RAG)...")
         
         # Generate a simple response using the LLM
-        simple_prompt = f"Based on a website analysis for {url}, please answer this question: {query}"
-        
-        # Use the LLM to generate a response
         answer = await llm_client.generate_rag_response(
             query, [f"Website: {url}"], conversation_history
         )

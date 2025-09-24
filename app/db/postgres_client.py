@@ -20,12 +20,21 @@ class PostgresClient:
     
     async def initialize(self):
         """Initialize connection pool"""
-        if not self.connection_pool:
-            self.connection_pool = await asyncpg.create_pool(
-                self.postgres_url,
-                min_size=1,
-                max_size=10
-            )
+        if not self.connection_pool and self.postgres_url:
+            print(f"🔄 Initializing PostgreSQL connection pool...")
+            try:
+                self.connection_pool = await asyncpg.create_pool(
+                    self.postgres_url,
+                    min_size=1,
+                    max_size=10,
+                    command_timeout=60
+                )
+                print("✅ PostgreSQL connection pool initialized")
+            except Exception as e:
+                print(f"❌ Failed to initialize PostgreSQL connection pool: {e}")
+                raise
+        elif not self.postgres_url:
+            print("⚠️ No POSTGRES_URL provided, cannot initialize connection pool")
     
     async def close(self):
         """Close connection pool"""
@@ -107,6 +116,19 @@ class PostgresClient:
         async with self.connection_pool.acquire() as conn:
             # Convert embedding list to string format for pgvector
             embedding_str = '[' + ','.join(map(str, query_embedding)) + ']'
+            print(f"🔍 Searching for chunks with website_id: {website_id}")
+            
+            # First check if chunks exist for this website
+            count_result = await conn.fetchrow(
+                "SELECT COUNT(*) as count FROM website_chunks WHERE website_id = $1",
+                website_id
+            )
+            chunk_count = count_result['count']
+            print(f"📊 Found {chunk_count} total chunks for website_id {website_id}")
+            
+            if chunk_count == 0:
+                print("⚠️ No chunks found for this website - embeddings may not have been stored")
+                return []
             
             results = await conn.fetch(
                 """
@@ -118,6 +140,10 @@ class PostgresClient:
                 """,
                 embedding_str, website_id, limit
             )
+            
+            print(f"🎯 Vector search returned {len(results)} results")
+            for i, row in enumerate(results):
+                print(f"   Result {i+1}: distance={row['distance']:.4f}, text={row['chunk_text'][:50]}...")
             
             return [row['chunk_text'] for row in results]
     
