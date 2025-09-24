@@ -703,6 +703,9 @@
 
         async function analyzeWebsite(url) {
             try {
+                // Clear previous analysis and chat when starting new analysis
+                clearPreviousAnalysis();
+                
                 // Update UI for loading state
                 setLoadingState(true);
                 currentUrl = url;
@@ -727,6 +730,37 @@
             } finally {
                 setLoadingState(false);
             }
+        }
+
+        function clearPreviousAnalysis() {
+            // Clear previous analysis results
+            insightsGrid.innerHTML = '';
+            
+            // Hide results section initially
+            resultsSection.style.display = 'none';
+            
+            // Hide chat section
+            chatSection.style.display = 'none';
+            resultsSection.classList.remove('split-view');
+            
+            // Clear chat messages (keep only the initial assistant message)
+            chatMessages.innerHTML = `
+                <div class="message assistant">
+                    <div class="message-bubble">
+                        Hello! I've analyzed the website and I'm ready to answer your questions. What would you like to know?
+                    </div>
+                </div>
+            `;
+            
+            // Reset conversation history
+            conversationHistory = [];
+            
+            // Clear any typing indicators
+            hideTypingIndicator();
+            
+            // Reset chat input
+            chatInput.value = '';
+            sendButton.disabled = false;
         }
 
         function setLoadingState(loading) {

@@ -154,6 +154,7 @@ FirmableWebAI is a production-ready FastAPI backend that:
 - 🔍 **Smart Homepage Scraping** - Extracts title, meta, headings, content, products, contact info
 - 🧠 **AI Business Analysis** - Industry, company size, USP, target audience extraction
 - 💬 **RAG Conversations** - Ask follow-up questions about analyzed websites
+- 🔄 **Fresh Start Analysis** - Automatically clears previous analysis and chat when analyzing new websites
 - 🔐 **Bearer Token Auth** - Secure API access with configurable keys
 - 🚦 **Rate Limiting** - Hybrid Redis/in-memory rate limiting to prevent abuse
 - 📊 **Structured Responses** - Pydantic-validated JSON outputs
