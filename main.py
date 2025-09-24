@@ -3,58 +3,21 @@ FirmableWebAI - Main FastAPI Application for Railway Deployment
 AI-powered backend for extracting business insights from website homepages
 """
 
-from fastapi import FastAPI, HTTPException, Depends, Request
+from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.responses import HTMLResponse
-from fastapi.staticfiles import StaticFiles
 import os
 import sys
-import asyncio
-from typing import Optional
+from typing import Optional, List, Dict, Any
 import uvicorn
+from pydantic import BaseModel, HttpUrl
+from urllib.parse import urlparse
 
 # Add the project root to the path
 sys.path.append(os.path.dirname(__file__))
 
-# Try to import live components
-try:
-    from models.pydantic_models import InsightsRequest, InsightsResponse, QueryRequest, QueryResponse
-    from app.scraper.runner import scraper_runner
-    from app.llm.llm_client import llm_client
-    from app.db.postgres_client import postgres_client
-    LIVE_MODE = bool(os.getenv("OPENAI_API_KEY"))
-except ImportError as e:
-    print(f"Import error (falling back to demo mode): {e}")
-    LIVE_MODE = False
-    # Define minimal models for demo mode
-    from pydantic import BaseModel, HttpUrl
-    from typing import List, Dict, Any
-    
-    class InsightsRequest(BaseModel):
-        url: HttpUrl
-        questions: Optional[List[str]] = None
-    
-    class InsightsResponse(BaseModel):
-        industry: str
-        company_size: Optional[str] = None
-        location: Optional[str] = None
-        USP: Optional[str] = None
-        products: Optional[List[str]] = None
-        target_audience: Optional[str] = None
-        contact_info: Optional[Dict[str, Any]] = None
-    
-    class QueryRequest(BaseModel):
-        url: HttpUrl
-        query: str
-        conversation_history: Optional[List[Dict[str, str]]] = []
-    
-    class QueryResponse(BaseModel):
-        answer: str
-        source_chunks: List[str]
-        conversation_history: List[Dict[str, str]]
-
-# Initialize FastAPI app
+# Initialize FastAPI app first
 app = FastAPI(
     title="FirmableWebAI",
     description="AI-powered backend for extracting business insights from website homepages with RAG-based conversational follow-up",
@@ -75,6 +38,42 @@ app.add_middleware(
 # Security
 security = HTTPBearer()
 
+# Pydantic models
+class InsightsRequest(BaseModel):
+    url: HttpUrl
+    questions: Optional[List[str]] = None
+
+class InsightsResponse(BaseModel):
+    industry: str
+    company_size: Optional[str] = None
+    location: Optional[str] = None
+    USP: Optional[str] = None
+    products: Optional[List[str]] = None
+    target_audience: Optional[str] = None
+    contact_info: Optional[Dict[str, Any]] = None
+
+class QueryRequest(BaseModel):
+    url: HttpUrl
+    query: str
+    conversation_history: Optional[List[Dict[str, str]]] = []
+
+class QueryResponse(BaseModel):
+    answer: str
+    source_chunks: List[str]
+    conversation_history: List[Dict[str, str]]
+
+# Try to import live components (graceful fallback)
+LIVE_MODE = False
+try:
+    from app.scraper.runner import scraper_runner
+    from app.llm.llm_client import llm_client
+    from app.db.postgres_client import postgres_client
+    LIVE_MODE = bool(os.getenv("OPENAI_API_KEY"))
+    print(f"Live components imported successfully. Live mode: {LIVE_MODE}")
+except ImportError as e:
+    print(f"Import error (running in demo mode): {e}")
+    LIVE_MODE = False
+
 def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
     """Verify Bearer token"""
     expected_token = os.getenv("API_SECRET_KEY", "demo-token-123")
@@ -82,17 +81,10 @@ def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
         raise HTTPException(status_code=401, detail="Invalid authentication token")
     return credentials.credentials
 
-# Mount static files for frontend
-if os.path.exists("public"):
-    app.mount("/static", StaticFiles(directory="public"), name="static")
-
 # Root endpoint
 @app.get("/")
 async def root():
     """Root endpoint - serve frontend or API info"""
-    if os.path.exists("public/index.html"):
-        with open("public/index.html", "r") as f:
-            return HTMLResponse(content=f.read())
     return {
         "message": "FirmableWebAI API",
         "version": "1.0.0",
@@ -191,7 +183,7 @@ async def query_website(
             conversation_history=request.conversation_history
         )
 
-# Live mode functions
+# Live mode functions (only called if LIVE_MODE is True)
 async def process_live_insights(url: str, questions: list):
     """Process insights request with real AI and database"""
     try:
@@ -296,7 +288,6 @@ async def process_live_query(url: str, query: str, conversation_history: list):
 # Demo mode functions
 def process_demo_insights(url: str, questions: list):
     """Process request with demo data"""
-    from urllib.parse import urlparse
     domain = urlparse(url).netloc.lower()
     
     # Customize demo response based on domain
@@ -342,7 +333,6 @@ def process_demo_insights(url: str, questions: list):
 
 def process_demo_query(url: str, query: str, conversation_history: list):
     """Process query with demo responses"""
-    from urllib.parse import urlparse
     domain = urlparse(url).netloc.lower()
     
     # Generate contextual demo response
@@ -373,6 +363,13 @@ def process_demo_query(url: str, query: str, conversation_history: list):
 # Railway deployment entry point
 if __name__ == "__main__":
     port = int(os.environ.get("PORT", 8000))
+    print(f"Starting FirmableWebAI on port {port}")
+    print(f"Live mode: {LIVE_MODE}")
+    print(f"Environment variables:")
+    print(f"  - OPENAI_API_KEY: {'✓' if os.getenv('OPENAI_API_KEY') else '✗'}")
+    print(f"  - POSTGRES_URL: {'✓' if os.getenv('POSTGRES_URL') else '✗'}")
+    print(f"  - API_SECRET_KEY: {'✓' if os.getenv('API_SECRET_KEY') else '✗ (using demo)'}")
+    
     uvicorn.run(
         "main:app",
         host="0.0.0.0",
