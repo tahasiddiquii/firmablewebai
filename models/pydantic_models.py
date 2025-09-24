@@ -15,6 +15,7 @@ class InsightsResponse(BaseModel):
     products: Optional[List[str]] = None
     target_audience: Optional[str] = None
     contact_info: Optional[Dict[str, Any]] = None
+    custom_answers: Optional[Dict[str, str]] = None  # Answers to custom questions
 
 
 class QueryRequest(BaseModel):

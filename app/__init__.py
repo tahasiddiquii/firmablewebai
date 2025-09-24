@@ -1,1 +1,1 @@
-# App package
+# App module

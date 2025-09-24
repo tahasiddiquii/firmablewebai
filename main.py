@@ -37,16 +37,8 @@ app = FastAPI(
     redoc_url="/redoc"
 )
 
-# Initialize rate limiter
-try:
-    import redis
-    from fastapi_limiter import FastAPILimiter
-    from fastapi_limiter.depends import RateLimiter
-    RATE_LIMITER_AVAILABLE = True
-except ImportError:
-    print("Rate limiting not available - missing fastapi-limiter or redis")
-    RATE_LIMITER_AVAILABLE = False
-    RateLimiter = lambda *args, **kwargs: lambda func: func
+# Import rate limiter
+from app.rate_limiter import rate_limiter, get_rate_limiter
 
 # CORS middleware
 app.add_middleware(
@@ -111,25 +103,13 @@ except Exception as e:
 @app.on_event("startup")
 async def startup():
     """Initialize services on startup"""
-    if RATE_LIMITER_AVAILABLE and os.getenv("REDIS_URL"):
-        try:
-            redis_url = os.getenv("REDIS_URL")
-            redis_client = redis.from_url(redis_url, encoding="utf-8", decode_responses=True)
-            await FastAPILimiter.init(redis_client)
-            print("✅ Rate limiter initialized")
-        except Exception as e:
-            print(f"⚠️ Rate limiter initialization failed: {e}")
-    else:
-        print("⚠️ Rate limiter disabled - no REDIS_URL configured")
+    # Initialize hybrid rate limiter (Redis with in-memory fallback)
+    await rate_limiter.initialize()
 
 @app.on_event("shutdown") 
 async def shutdown():
     """Cleanup on shutdown"""
-    if RATE_LIMITER_AVAILABLE:
-        try:
-            await FastAPILimiter.close()
-        except Exception as e:
-            print(f"Rate limiter cleanup failed: {e}")
+    await rate_limiter.close()
 
 # Pydantic models
 class InsightsRequest(BaseModel):
@@ -228,7 +208,8 @@ async def health():
     }
 
 # Authentication test endpoint
-@app.get("/api/auth/test")
+@app.get("/api/auth/test",
+        dependencies=[Depends(get_rate_limiter(times=30, seconds=60))])
 async def test_auth(authenticated: bool = Depends(verify_token)):
     """Test authentication endpoint - requires Bearer token"""
     return {
@@ -238,7 +219,9 @@ async def test_auth(authenticated: bool = Depends(verify_token)):
     }
 
 # Website Insights endpoint
-@app.post("/api/insights", response_model=InsightsResponse)
+@app.post("/api/insights", 
+         response_model=InsightsResponse,
+         dependencies=[Depends(get_rate_limiter(times=10, seconds=60))])
 async def analyze_website(
     request: InsightsRequest,
     authenticated: bool = Depends(verify_token)
@@ -263,7 +246,8 @@ async def analyze_website(
             "USP": response.get("USP"),
             "products": response.get("products") or [],
             "target_audience": response.get("target_audience"),
-            "contact_info": response.get("contact_info") or {}
+            "contact_info": response.get("contact_info") or {},
+            "custom_answers": response.get("custom_answers")  # Include custom question answers
         }
         
         return InsightsResponse(**validated_response)
@@ -283,12 +267,15 @@ async def analyze_website(
             "USP": "Analysis temporarily unavailable",
             "products": [],
             "target_audience": None,
-            "contact_info": {}
+            "contact_info": {},
+            "custom_answers": None
         }
         return InsightsResponse(**fallback_response)
 
 # RAG Query endpoint
-@app.post("/api/query", response_model=QueryResponse)
+@app.post("/api/query", 
+         response_model=QueryResponse,
+         dependencies=[Depends(get_rate_limiter(times=20, seconds=60))])
 async def query_website(
     request: QueryRequest,
     authenticated: bool = Depends(verify_token)

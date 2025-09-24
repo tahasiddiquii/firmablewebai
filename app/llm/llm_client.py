@@ -67,12 +67,18 @@ class LLMClient:
         """
         
         questions_text = ""
+        questions_json_format = ""
         if questions:
-            questions_text = f"\n\nAdditional Questions: {', '.join(questions)}"
+            questions_text = f"\n\nCUSTOM QUESTIONS TO ANSWER:\n"
+            for i, q in enumerate(questions, 1):
+                questions_text += f"{i}. {q}\n"
+            
+            # Add custom_answers to the expected JSON format
+            questions_json_format = ',\n  "custom_answers": {' + ', '.join([f'"{q}": "answer to this question"' for q in questions]) + '}'
         
         prompt = f"""You are an expert business analyst specializing in company profiling. Analyze the following homepage content and extract comprehensive business insights.
 
-Homepage Content: {content_text}{questions_text}
+Homepage Content: {content_text}
 
 ANALYSIS REQUIREMENTS:
 
@@ -103,7 +109,7 @@ ANALYSIS REQUIREMENTS:
 - Industry focus, problem statements addressed
 
 **Contact Info**: Extract visible contact details (emails, phones, social media handles).
-
+{questions_text}
 OUTPUT FORMAT - Return ONLY valid JSON:
 {{
   "industry": "specific industry name (required, never null)",
@@ -112,10 +118,10 @@ OUTPUT FORMAT - Return ONLY valid JSON:
   "USP": "concise unique value proposition summary or null",
   "products": ["product1", "service1", "offering1"],
   "target_audience": "primary customer demographic description or null",
-  "contact_info": {{"emails": [], "phones": [], "social_media": []}}
+  "contact_info": {{"emails": [], "phones": [], "social_media": []}}{questions_json_format}
 }}
 
-Be thorough in your analysis and use business intelligence to infer details that may not be explicitly stated."""
+Be thorough in your analysis and use business intelligence to infer details that may not be explicitly stated. For custom questions, provide specific answers based on the website content."""
 
         try:
             response = await self.client.chat.completions.create(
@@ -179,6 +185,10 @@ Be thorough in your analysis and use business intelligence to infer details that
                 "target_audience": insights.get("target_audience"),
                 "contact_info": contact_info
             }
+            
+            # Include custom answers if they exist
+            if "custom_answers" in insights:
+                cleaned_insights["custom_answers"] = insights["custom_answers"]
             
             print(f"✅ Cleaned insights: {cleaned_insights}")
             return cleaned_insights
