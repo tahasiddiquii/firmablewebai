@@ -88,6 +88,7 @@ ANALYSIS REQUIREMENTS:
 - Market focus indicators like "serving Australia", "Australian market", "UK-based"
 - Domain extensions (.com.au = Australia, .co.uk = UK, .ca = Canada)
 - Geographic terms in title/description (e.g., "Australia & NZ", "European", "US market")
+- IMPORTANT: If content mentions "Australia", "New Zealand", "UK", "Canada", "USA" as primary markets, extract that as location
 
 **USP (Unique Selling Proposition)**: Summarize what makes this company unique. Look for:
 - Key differentiators, competitive advantages
@@ -107,7 +108,7 @@ OUTPUT FORMAT - Return ONLY valid JSON:
 {{
   "industry": "specific industry name (required, never null)",
   "company_size": "size category or null if unclear",
-  "location": "city, state/country or null if not found",
+  "location": "city, state/country or null if not found (e.g., 'Australia', 'New Zealand', 'United Kingdom', 'United States')",
   "USP": "concise unique value proposition summary or null",
   "products": ["product1", "service1", "offering1"],
   "target_audience": "primary customer demographic description or null",
