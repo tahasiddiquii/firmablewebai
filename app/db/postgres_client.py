@@ -94,19 +94,19 @@ class PostgresClient:
             
             # Insert new chunks
             for chunk_text, embedding in zip(chunks, embeddings):
-                # Convert embedding list to numpy array for pgvector
-                import numpy as np
-                embedding_array = np.array(embedding, dtype=np.float32)
+                # Convert embedding list to string format for pgvector
+                # pgvector expects format: '[0.1, 0.2, 0.3]'
+                embedding_str = '[' + ','.join(map(str, embedding)) + ']'
                 await conn.execute(
                     "INSERT INTO website_chunks (website_id, chunk_text, embedding) VALUES ($1, $2, $3)",
-                    website_id, chunk_text, embedding_array
+                    website_id, chunk_text, embedding_str
                 )
     
     async def search_similar_chunks(self, query_embedding: List[float], website_id: int, limit: int = 5) -> List[str]:
         """Search for similar chunks using vector similarity"""
         async with self.connection_pool.acquire() as conn:
-            # Convert embedding to numpy array for pgvector
-            embedding_array = np.array(query_embedding, dtype=np.float32)
+            # Convert embedding list to string format for pgvector
+            embedding_str = '[' + ','.join(map(str, query_embedding)) + ']'
             
             results = await conn.fetch(
                 """
@@ -116,7 +116,7 @@ class PostgresClient:
                 ORDER BY embedding <=> $1
                 LIMIT $3
                 """,
-                embedding_array, website_id, limit
+                embedding_str, website_id, limit
             )
             
             return [row['chunk_text'] for row in results]
