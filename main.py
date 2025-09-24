@@ -7,6 +7,7 @@ from fastapi import FastAPI, HTTPException, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.responses import HTMLResponse
+from fastapi.staticfiles import StaticFiles
 import os
 import sys
 from typing import Optional, List, Dict, Any
@@ -37,6 +38,15 @@ app.add_middleware(
 
 # Security
 security = HTTPBearer()
+
+# Mount static files for frontend assets
+try:
+    if os.path.exists("public"):
+        app.mount("/static", StaticFiles(directory="public"), name="static")
+    elif os.path.exists("frontend"):
+        app.mount("/static", StaticFiles(directory="frontend"), name="static")
+except Exception as e:
+    print(f"Static files mounting failed: {e}")
 
 # Pydantic models
 class InsightsRequest(BaseModel):
@@ -81,10 +91,41 @@ def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)):
         raise HTTPException(status_code=401, detail="Invalid authentication token")
     return credentials.credentials
 
-# Root endpoint
-@app.get("/")
+# Root endpoint - serve the frontend
+@app.get("/", response_class=HTMLResponse)
 async def root():
-    """Root endpoint - serve frontend or API info"""
+    """Root endpoint - serve frontend HTML"""
+    try:
+        # Try to serve from public directory first
+        if os.path.exists("public/index.html"):
+            with open("public/index.html", "r") as f:
+                return HTMLResponse(content=f.read())
+        # Fallback to frontend directory
+        elif os.path.exists("frontend/index.html"):
+            with open("frontend/index.html", "r") as f:
+                return HTMLResponse(content=f.read())
+        else:
+            # If no frontend files found, return API info
+            return HTMLResponse(content="""
+            <html>
+                <body>
+                    <h1>FirmableWebAI API</h1>
+                    <p>Version: 1.0.0</p>
+                    <p>Status: Healthy</p>
+                    <p>Mode: """ + ("Live" if LIVE_MODE else "Demo") + """</p>
+                    <p><a href="/docs">Interactive API Documentation</a></p>
+                    <p><a href="/api/health">Health Check</a></p>
+                </body>
+            </html>
+            """)
+    except Exception as e:
+        print(f"Error serving frontend: {e}")
+        return HTMLResponse(content=f"<html><body><h1>FirmableWebAI API</h1><p>Frontend loading error: {str(e)}</p><p><a href='/docs'>API Docs</a></p></body></html>")
+
+# API info endpoint
+@app.get("/api/info")
+async def api_info():
+    """API information endpoint"""
     return {
         "message": "FirmableWebAI API",
         "version": "1.0.0",
