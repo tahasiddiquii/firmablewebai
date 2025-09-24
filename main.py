@@ -3,7 +3,7 @@ FirmableWebAI - Main FastAPI Application for Railway Deployment
 AI-powered backend for extracting business insights from website homepages
 """
 
-from fastapi import FastAPI, HTTPException, Depends
+from fastapi import FastAPI, HTTPException, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from fastapi.responses import HTMLResponse
@@ -27,6 +27,17 @@ app = FastAPI(
     redoc_url="/redoc"
 )
 
+# Initialize rate limiter
+try:
+    import redis
+    from fastapi_limiter import FastAPILimiter
+    from fastapi_limiter.depends import RateLimiter
+    RATE_LIMITER_AVAILABLE = True
+except ImportError:
+    print("Rate limiting not available - missing fastapi-limiter or redis")
+    RATE_LIMITER_AVAILABLE = False
+    RateLimiter = lambda *args, **kwargs: lambda func: func
+
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
@@ -47,6 +58,24 @@ try:
         app.mount("/static", StaticFiles(directory="frontend"), name="static")
 except Exception as e:
     print(f"Static files mounting failed: {e}")
+
+@app.on_event("startup")
+async def startup():
+    """Initialize services on startup"""
+    if RATE_LIMITER_AVAILABLE:
+        try:
+            redis_url = os.getenv("REDIS_URL", "redis://localhost:6379")
+            redis_client = redis.from_url(redis_url, encoding="utf-8", decode_responses=True)
+            await FastAPILimiter.init(redis_client)
+            print("✅ Rate limiter initialized")
+        except Exception as e:
+            print(f"⚠️ Rate limiter initialization failed: {e}")
+
+@app.on_event("shutdown") 
+async def shutdown():
+    """Cleanup on shutdown"""
+    if RATE_LIMITER_AVAILABLE:
+        await FastAPILimiter.close()
 
 # Pydantic models
 class InsightsRequest(BaseModel):
@@ -161,7 +190,8 @@ async def health():
 @app.post("/api/insights", response_model=InsightsResponse)
 async def analyze_website(
     request: InsightsRequest,
-    token: str = Depends(verify_token)
+    token: str = Depends(verify_token),
+    ratelimit: dict = Depends(RateLimiter(times=10, seconds=60))
 ):
     """
     Analyze a website and extract business insights.
@@ -194,7 +224,8 @@ async def analyze_website(
 @app.post("/api/query", response_model=QueryResponse)
 async def query_website(
     request: QueryRequest,
-    token: str = Depends(verify_token)
+    token: str = Depends(verify_token),
+    ratelimit: dict = Depends(RateLimiter(times=20, seconds=60))
 ):
     """
     Ask questions about a previously analyzed website using RAG.
