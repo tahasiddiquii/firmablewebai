@@ -8,6 +8,7 @@ import requests
 import json
 import sys
 import time
+import os
 
 def test_railway_deployment(railway_url: str):
     """Test the Railway deployment"""
@@ -15,7 +16,15 @@ def test_railway_deployment(railway_url: str):
     # Remove trailing slash
     base_url = railway_url.rstrip('/')
     
+    # Get API key for authentication
+    api_key = os.getenv('API_SECRET_KEY', 'demo-secret-key-for-development')
+    auth_headers = {
+        'Authorization': f'Bearer {api_key}',
+        'Content-Type': 'application/json'
+    }
+    
     print(f"🚂 Testing Railway deployment: {base_url}")
+    print(f"🔑 Using API key: {api_key[:20]}...")
     print("=" * 60)
     
     # Test 1: Health check
@@ -60,7 +69,8 @@ def test_railway_deployment(railway_url: str):
         payload = {"url": "https://spillmate.ai/"}
         response = requests.post(
             f"{base_url}/api/insights", 
-            json=payload, 
+            json=payload,
+            headers=auth_headers,
             timeout=60  # Give it time for scraping and AI processing
         )
         

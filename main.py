@@ -7,6 +7,7 @@ from fastapi import FastAPI, HTTPException, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
+from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 import os
 import sys
 from typing import Optional, List, Dict, Any
@@ -55,6 +56,47 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Security configuration
+security = HTTPBearer(auto_error=False)  # auto_error=False for graceful handling
+
+def get_api_secret_key() -> str:
+    """Get API secret key from environment"""
+    return os.getenv("API_SECRET_KEY", "demo-secret-key-for-development")
+
+async def verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)) -> bool:
+    """Verify Bearer token authentication"""
+    if not credentials:
+        raise HTTPException(
+            status_code=401,
+            detail="Authorization header required. Use: Authorization: Bearer <your-api-key>",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    expected_token = get_api_secret_key()
+    if credentials.credentials != expected_token:
+        raise HTTPException(
+            status_code=401,
+            detail="Invalid API key. Check your Authorization header.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    return True
+
+async def optional_verify_token(credentials: HTTPAuthorizationCredentials = Depends(security)) -> bool:
+    """Optional token verification for backward compatibility during migration"""
+    if not credentials:
+        # During migration phase, allow requests without auth
+        print("⚠️ Request without authorization - migration mode")
+        return False
+    
+    expected_token = get_api_secret_key()
+    if credentials.credentials != expected_token:
+        print("⚠️ Invalid token provided")
+        return False
+    
+    print("✅ Valid token provided")
+    return True
 
 
 # Mount static files for frontend assets
@@ -180,14 +222,26 @@ async def health():
         "mode": "live" if LIVE_MODE else "unavailable",
         "environment_variables": {
             "OPENAI_API_KEY": "✓" if os.getenv("OPENAI_API_KEY") else "✗",
-            "POSTGRES_URL": "✓" if os.getenv("POSTGRES_URL") else "✗"
+            "POSTGRES_URL": "✓" if os.getenv("POSTGRES_URL") else "✗",
+            "API_SECRET_KEY": "✓" if os.getenv("API_SECRET_KEY") else "✗"
         }
+    }
+
+# Authentication test endpoint
+@app.get("/api/auth/test")
+async def test_auth(authenticated: bool = Depends(verify_token)):
+    """Test authentication endpoint - requires Bearer token"""
+    return {
+        "message": "Authentication successful!",
+        "authenticated": authenticated,
+        "api_key_configured": bool(os.getenv("API_SECRET_KEY"))
     }
 
 # Website Insights endpoint
 @app.post("/api/insights", response_model=InsightsResponse)
 async def analyze_website(
     request: InsightsRequest,
+    authenticated: bool = Depends(verify_token)
 ):
     """
     Analyze a website and extract business insights.
@@ -237,6 +291,7 @@ async def analyze_website(
 @app.post("/api/query", response_model=QueryResponse)
 async def query_website(
     request: QueryRequest,
+    authenticated: bool = Depends(verify_token)
 ):
     """
     Ask questions about a previously analyzed website using RAG.
